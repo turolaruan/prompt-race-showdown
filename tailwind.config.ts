@@ -22,6 +22,7 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          glow: "hsl(var(--primary-glow))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -47,6 +48,14 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        winner: {
+          DEFAULT: "hsl(var(--winner))",
+          foreground: "hsl(var(--winner-foreground))",
+        },
+        tie: {
+          DEFAULT: "hsl(var(--tie))",
+          foreground: "hsl(var(--tie-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -57,6 +66,14 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      backgroundImage: {
+        'arena-gradient': 'var(--arena-gradient)',
+        'arena-gradient-subtle': 'var(--arena-gradient-subtle)',
+      },
+      boxShadow: {
+        'arena': 'var(--arena-shadow)',
+        'arena-glow': 'var(--arena-shadow-glow)',
       },
       borderRadius: {
         lg: "var(--radius)",
