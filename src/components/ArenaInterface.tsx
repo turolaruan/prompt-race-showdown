@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Trophy, Timer, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, BarChart3, User, Settings, Plus, Paperclip, Image, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Model {
@@ -34,6 +34,7 @@ const ArenaInterface = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
   const [winner, setWinner] = useState<string | null>(null);
+  const [showResults, setShowResults] = useState(false);
 
   const simulateModelResponse = async (model: Model, prompt: string): Promise<ModelResponse> => {
     const baseTime = model.speed;
@@ -69,6 +70,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
     setIsRunning(true);
     setFastestResponses([]);
     setWinner(null);
+    setShowResults(true);
 
     // Initialize loading states for all models
     const loadingResponses = availableModels.map(model => ({
@@ -118,153 +120,229 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
     return availableModels.find(model => model.id === modelId);
   };
 
+  const startNewChat = () => {
+    setPrompt("");
+    setShowResults(false);
+    setFastestResponses([]);
+    setWinner(null);
+  };
+
   return (
-    <div className="min-h-screen bg-arena-gradient-subtle">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 bg-arena-gradient px-6 py-3 rounded-full text-white font-bold text-2xl shadow-arena-glow mb-4">
-            <Trophy size={28} />
-            AI Arena MVP
+    <div className="flex h-screen bg-background">
+      {/* Sidebar */}
+      <div className="w-64 bg-sidebar border-r border-sidebar-border flex flex-col">
+        <div className="p-4">
+          <div className="flex items-center gap-2 text-sidebar-foreground font-bold text-lg mb-6">
+            <Trophy size={24} className="text-primary" />
+            AI Arena
           </div>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Compare modelos de IA em tempo real. Os 2 modelos mais rápidos competem em uma arena de respostas.
-          </p>
-        </div>
-
-        {/* Prompt Input */}
-        <Card className="mb-8 shadow-arena">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Send size={20} />
-              Seu Prompt
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Textarea
-              placeholder="Digite seu prompt aqui... (ex: Explique como funciona machine learning)"
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="min-h-[120px] resize-none"
-              disabled={isRunning}
-            />
-            <Button
-              onClick={runArena}
-              disabled={isRunning || !prompt.trim()}
-              className="w-full bg-arena-gradient hover:opacity-90 text-white font-semibold py-3"
-            >
-              {isRunning ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Executando Arena...
-                </>
-              ) : (
-                <>
-                  <Trophy className="mr-2 h-4 w-4" />
-                  Iniciar Arena
-                </>
-              )}
+          
+          <Button 
+            onClick={startNewChat}
+            className="w-full justify-start gap-2 mb-4 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground"
+          >
+            <MessageSquare size={16} />
+            Novo Chat
+          </Button>
+          
+          <nav className="space-y-2">
+            <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent">
+              <BarChart3 size={16} />
+              Leaderboard
             </Button>
-          </CardContent>
-        </Card>
+          </nav>
+        </div>
+        
+        {/* Bottom section */}
+        <div className="mt-auto p-4 border-t border-sidebar-border">
+          <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent">
+            <User size={16} />
+            Login
+          </Button>
+        </div>
+      </div>
 
-        {/* Results Grid */}
-        {fastestResponses.length > 0 && (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {fastestResponses.slice(0, 2).map((response, index) => {
-              const modelInfo = getModelInfo(response.modelId);
-              const isWinner = winner === response.modelId;
-              const isLoading = response.isLoading;
-              
-              return (
-                <Card 
-                  key={response.modelId} 
-                  className={`relative overflow-hidden transition-all duration-300 ${
-                    isWinner ? 'ring-2 ring-winner shadow-lg' : 'hover:shadow-md'
-                  }`}
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {!showResults ? (
+          /* Initial View */
+          <div className="flex-1 flex flex-col items-center justify-center px-8">
+            {/* Model Icons */}
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="text-xs font-bold text-primary">G</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                <span className="text-xs font-bold text-accent">C</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-secondary/40 flex items-center justify-center">
+                <span className="text-xs font-bold text-secondary-foreground">G</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center">
+                <span className="text-xs font-bold text-primary">D</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-accent/30 flex items-center justify-center">
+                <span className="text-xs font-bold text-accent">L</span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-primary/25 flex items-center justify-center">
+                <span className="text-xs font-bold text-primary">M</span>
+              </div>
+            </div>
+
+            {/* Main Heading */}
+            <h1 className="text-4xl font-bold text-foreground mb-4 text-center">
+              Encontre a melhor IA para você
+            </h1>
+            
+            <p className="text-muted-foreground text-center mb-12 max-w-2xl">
+              Compare respostas entre os principais modelos de IA, compartilhe seu feedback e contribua para nosso ranking público
+            </p>
+
+            {/* Input Area */}
+            <div className="w-full max-w-3xl">
+              <div className="relative">
+                <Textarea
+                  placeholder="Pergunte qualquer coisa..."
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="min-h-[120px] resize-none pr-16 border-input bg-background"
+                  disabled={isRunning}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      runArena();
+                    }
+                  }}
+                />
+                
+                {/* Action Buttons */}
+                <div className="absolute bottom-3 left-3 flex gap-2">
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Plus size={16} />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Paperclip size={16} />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Image size={16} />
+                  </Button>
+                </div>
+                
+                <Button
+                  onClick={runArena}
+                  disabled={isRunning || !prompt.trim()}
+                  className="absolute bottom-3 right-3 h-8 w-8 p-0 bg-primary hover:bg-primary/90"
                 >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Badge variant={index === 0 ? "default" : "secondary"} className="bg-arena-gradient text-white">
-                          #{index + 1}° Lugar
-                        </Badge>
-                        <div>
-                          <CardTitle className="text-lg">{modelInfo?.name}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{modelInfo?.provider}</p>
-                        </div>
-                      </div>
-                      {!isLoading && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Timer size={14} />
-                          {response.responseTime}ms
-                        </div>
-                      )}
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <span className="ml-2 text-muted-foreground">Processando...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-muted rounded-lg p-4 mb-4 min-h-[200px]">
-                          <p className="text-sm leading-relaxed whitespace-pre-line">
-                            {response.response}
-                          </p>
-                        </div>
-                        
-                        {!winner && (
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleVote(response.modelId)}
-                              className="flex-1 hover:border-winner hover:text-winner"
-                            >
-                              <ThumbsUp size={16} className="mr-1" />
-                              Melhor Resposta
-                            </Button>
+                  {isRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Results View */
+          <div className="flex-1 p-8">
+            <div className="max-w-6xl mx-auto">
+              {/* Header with back button */}
+              <div className="flex items-center gap-4 mb-8">
+                <Button 
+                  onClick={startNewChat}
+                  variant="outline" 
+                  size="sm"
+                >
+                  ← Nova Conversa
+                </Button>
+                <div className="flex-1">
+                  <h2 className="text-xl font-semibold text-foreground">Comparação de Modelos</h2>
+                  <p className="text-sm text-muted-foreground">Prompt: "{prompt}"</p>
+                </div>
+              </div>
+
+              {/* Results Grid */}
+              {fastestResponses.length > 0 && (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {fastestResponses.slice(0, 2).map((response, index) => {
+                    const modelInfo = getModelInfo(response.modelId);
+                    const isWinner = winner === response.modelId;
+                    const isLoading = response.isLoading;
+                    
+                    return (
+                      <Card 
+                        key={response.modelId} 
+                        className={`relative overflow-hidden transition-all duration-300 ${
+                          isWinner ? 'ring-2 ring-winner shadow-lg' : 'hover:shadow-md'
+                        }`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground">
+                                #{index + 1}° Lugar
+                              </Badge>
+                              <div>
+                                <CardTitle className="text-lg">{modelInfo?.name}</CardTitle>
+                                <p className="text-sm text-muted-foreground">{modelInfo?.provider}</p>
+                              </div>
+                            </div>
+                            {!isLoading && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Timer size={14} />
+                                {response.responseTime}ms
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </CardHeader>
                         
-                        {isWinner && (
-                          <div className="flex items-center justify-center py-2">
-                            <Badge className="bg-winner text-winner-foreground">
-                              <Trophy size={14} className="mr-1" />
-                              Vencedor!
-                            </Badge>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+                        <CardContent>
+                          {isLoading ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                              <span className="ml-2 text-muted-foreground">Processando...</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="bg-muted rounded-lg p-4 mb-4 min-h-[200px]">
+                                <p className="text-sm leading-relaxed whitespace-pre-line">
+                                  {response.response}
+                                </p>
+                              </div>
+                              
+                              {!winner && (
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleVote(response.modelId)}
+                                    className="flex-1 hover:border-winner hover:text-winner"
+                                  >
+                                    <ThumbsUp size={16} className="mr-1" />
+                                    Melhor Resposta
+                                  </Button>
+                                </div>
+                              )}
+                              
+                              {isWinner && (
+                                <div className="flex items-center justify-center py-2">
+                                  <Badge className="bg-winner text-winner-foreground">
+                                    <Trophy size={14} className="mr-1" />
+                                    Vencedor!
+                                  </Badge>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
-
-        {/* Available Models Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Modelos Disponíveis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {availableModels.map((model) => (
-                <div key={model.id} className="text-center p-3 bg-muted rounded-lg">
-                  <p className="font-semibold text-sm">{model.name}</p>
-                  <p className="text-xs text-muted-foreground">{model.provider}</p>
-                  <p className="text-xs text-muted-foreground mt-1">~{model.speed}ms</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
