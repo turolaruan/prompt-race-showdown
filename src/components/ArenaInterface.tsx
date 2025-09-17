@@ -190,22 +190,22 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-4xl font-bold text-foreground mb-4 text-center">
+            <h1 className="text-5xl font-bold text-foreground mb-6 text-center">
               Encontre a melhor IA para você
             </h1>
             
-            <p className="text-muted-foreground text-center mb-12 max-w-2xl">
+            <p className="text-lg text-muted-foreground text-center mb-12 max-w-3xl">
               Compare respostas entre os principais modelos de IA, compartilhe seu feedback e contribua para nosso ranking público
             </p>
 
             {/* Input Area */}
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-4xl">
               <div className="relative">
                 <Textarea
                   placeholder="Pergunte qualquer coisa..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[120px] resize-none pr-16 border-input bg-background"
+                  className="min-h-[140px] text-base resize-none pr-16 border-input bg-background"
                   disabled={isRunning}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -244,20 +244,21 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
           </div>
         ) : (
           /* Results View */
-          <div className="flex-1 p-8">
-            <div className="max-w-6xl mx-auto">
+          <div className="flex-1 p-6">
+            <div className="max-w-7xl mx-auto">
               {/* Header with back button */}
               <div className="flex items-center gap-4 mb-8">
                 <Button 
                   onClick={startNewChat}
                   variant="outline" 
                   size="sm"
+                  className="text-sm"
                 >
                   ← Nova Conversa
                 </Button>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-foreground">Comparação de Modelos</h2>
-                  <p className="text-sm text-muted-foreground">Prompt: "{prompt}"</p>
+                  <h2 className="text-2xl font-semibold text-foreground">Comparação de Modelos</h2>
+                  <p className="text-base text-muted-foreground">Prompt: "{prompt}"</p>
                 </div>
               </div>
 
@@ -276,20 +277,20 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                           isWinner ? 'ring-2 ring-winner shadow-lg' : 'hover:shadow-md'
                         }`}
                       >
-                        <CardHeader className="pb-3">
+                        <CardHeader className="pb-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground">
+                              <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-sm px-3 py-1">
                                 #{index + 1}° Lugar
                               </Badge>
                               <div>
-                                <CardTitle className="text-lg">{modelInfo?.name}</CardTitle>
-                                <p className="text-sm text-muted-foreground">{modelInfo?.provider}</p>
+                                <CardTitle className="text-xl">{modelInfo?.name}</CardTitle>
+                                <p className="text-base text-muted-foreground">{modelInfo?.provider}</p>
                               </div>
                             </div>
                             {!isLoading && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                <Timer size={14} />
+                              <div className="flex items-center gap-1 text-base text-muted-foreground">
+                                <Timer size={16} />
                                 {response.responseTime}ms
                               </div>
                             )}
@@ -298,14 +299,14 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                         
                         <CardContent>
                           {isLoading ? (
-                            <div className="flex items-center justify-center py-8">
-                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                              <span className="ml-2 text-muted-foreground">Processando...</span>
+                            <div className="flex items-center justify-center py-12">
+                              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                              <span className="ml-3 text-base text-muted-foreground">Processando...</span>
                             </div>
                           ) : (
                             <>
-                              <div className="bg-muted rounded-lg p-4 mb-4 min-h-[200px]">
-                                <p className="text-sm leading-relaxed whitespace-pre-line">
+                              <div className="bg-muted rounded-lg p-6 mb-6 min-h-[300px]">
+                                <p className="text-base leading-relaxed whitespace-pre-line">
                                   {response.response}
                                 </p>
                               </div>
@@ -314,20 +315,20 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                 <div className="flex gap-2">
                                   <Button
                                     variant="outline"
-                                    size="sm"
+                                    size="default"
                                     onClick={() => handleVote(response.modelId)}
-                                    className="flex-1 hover:border-winner hover:text-winner"
+                                    className="flex-1 hover:border-winner hover:text-winner text-base py-3"
                                   >
-                                    <ThumbsUp size={16} className="mr-1" />
+                                    <ThumbsUp size={18} className="mr-2" />
                                     Melhor Resposta
                                   </Button>
                                 </div>
                               )}
                               
                               {isWinner && (
-                                <div className="flex items-center justify-center py-2">
-                                  <Badge className="bg-winner text-winner-foreground">
-                                    <Trophy size={14} className="mr-1" />
+                                <div className="flex items-center justify-center py-3">
+                                  <Badge className="bg-winner text-winner-foreground text-base px-4 py-2">
+                                    <Trophy size={16} className="mr-2" />
                                     Vencedor!
                                   </Badge>
                                 </div>
