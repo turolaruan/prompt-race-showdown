@@ -36,6 +36,26 @@ const ArenaInterface = () => {
   const [winner, setWinner] = useState<string | null>(null);
   const [showResults, setShowResults] = useState(false);
 
+  const promptSuggestions = [
+    "Explique como funciona a inteligência artificial",
+    "Escreva um código Python para calcular fibonacci",
+    "Qual é a diferença entre machine learning e deep learning?",
+    "Crie uma receita de bolo de chocolate",
+    "Explique a teoria da relatividade de Einstein",
+    "Como funciona o algoritmo de ordenação quicksort?"
+  ];
+
+  const formatTime = (milliseconds: number): string => {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (minutes > 0) {
+      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    return `${remainingSeconds}s`;
+  };
+
   const simulateModelResponse = async (model: Model, prompt: string): Promise<ModelResponse> => {
     const baseTime = model.speed;
     const variation = Math.random() * 500 - 250; // ±250ms variation
@@ -146,19 +166,8 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
           </Button>
           
           <nav className="space-y-2">
-            <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent">
-              <BarChart3 size={16} />
-              Leaderboard
-            </Button>
+            {/* Leaderboard desabilitado por enquanto */}
           </nav>
-        </div>
-        
-        {/* Bottom section */}
-        <div className="mt-auto p-4 border-t border-sidebar-border">
-          <Button variant="ghost" className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent">
-            <User size={16} />
-            Login
-          </Button>
         </div>
       </div>
 
@@ -200,6 +209,22 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
             {/* Input Area */}
             <div className="w-full max-w-4xl">
+              {/* Suggestions */}
+              <div className="mb-6">
+                <p className="text-sm text-muted-foreground mb-3">Sugestões:</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {promptSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setPrompt(suggestion)}
+                      className="text-left p-3 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-sm"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
               <div className="relative">
                 <Textarea
                   placeholder="Pergunte qualquer coisa..."
@@ -284,14 +309,18 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                 #{index + 1}° Lugar
                               </Badge>
                               <div>
-                                <CardTitle className="text-xl">{modelInfo?.name}</CardTitle>
-                                <p className="text-base text-muted-foreground">{modelInfo?.provider}</p>
+                                <CardTitle className="text-xl">
+                                  {winner ? modelInfo?.name : `Modelo ${String.fromCharCode(65 + index)}`}
+                                </CardTitle>
+                                <p className="text-base text-muted-foreground">
+                                  {winner ? modelInfo?.provider : "Provedor oculto"}
+                                </p>
                               </div>
                             </div>
                             {!isLoading && (
                               <div className="flex items-center gap-1 text-base text-muted-foreground">
                                 <Timer size={16} />
-                                {response.responseTime}ms
+                                {formatTime(response.responseTime)}
                               </div>
                             )}
                           </div>
