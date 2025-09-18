@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
 
 interface Model {
   id: string;
@@ -185,9 +186,9 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       {/* Sidebar */}
       <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
         <div className="p-4">
-          <div className="flex items-center gap-2 text-sidebar-foreground font-bold text-lg mb-6">
-            <Trophy size={24} className="text-primary" />
-            LM Arena
+          <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
+            <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
+            GB-CS-RT
           </div>
           
           <Button 
