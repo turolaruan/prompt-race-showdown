@@ -266,22 +266,22 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-6xl font-bold text-foreground mb-6 text-center">
+                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">
                   Encontre a melhor IA para você
                 </h1>
                 
-                <p className="text-xl text-muted-foreground text-center mb-12 max-w-4xl">
+                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">
                   Compare respostas entre os principais modelos de IA, compartilhe seu feedback e contribua para nosso ranking público
                 </p>
               </div>
             ) : (
               /* Results View */
-              <div className="p-8">
-                <div className="max-w-7xl mx-auto">
+              <div className="p-12">
+                <div className="max-w-full mx-auto px-8">
                   {/* Header */}
-                  <div className="mb-8">
-                    <h2 className="text-3xl font-semibold text-foreground mb-2">Comparação de Modelos</h2>
-                    <p className="text-lg text-muted-foreground">Prompt: "{prompt}"</p>
+                  <div className="mb-12">
+                    <h2 className="text-4xl font-semibold text-foreground mb-4">Comparação de Modelos</h2>
+                    <p className="text-2xl text-muted-foreground">Prompt: "{prompt}"</p>
                   </div>
 
                   {/* Results Grid */}
@@ -301,21 +301,21 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                           <CardHeader className="pb-6">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-base px-4 py-2">
+                                <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-xl px-6 py-3">
                                   #{index + 1}° Lugar
                                 </Badge>
                                 <div>
-                                  <CardTitle className="text-2xl">
+                                  <CardTitle className="text-3xl">
                                     {winner ? modelInfo?.name : `Modelo ${String.fromCharCode(65 + index)}`}
                                   </CardTitle>
-                                  <p className="text-lg text-muted-foreground">
+                                  <p className="text-xl text-muted-foreground">
                                     {winner ? modelInfo?.provider : "Provedor oculto"}
                                   </p>
                                 </div>
                               </div>
                               {!isLoading && (
-                                <div className="flex items-center gap-1 text-lg text-muted-foreground">
-                                  <Timer size={18} />
+                                <div className="flex items-center gap-1 text-xl text-muted-foreground">
+                                  <Timer size={22} />
                                   {formatTime(response.responseTime)}
                                 </div>
                               )}
@@ -325,13 +325,13 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                           <CardContent>
                             {isLoading ? (
                               <div className="flex items-center justify-center py-16">
-                                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                                <span className="ml-4 text-lg text-muted-foreground">Processando...</span>
+                                <Loader2 className="h-16 w-16 animate-spin text-primary" />
+                                <span className="ml-4 text-xl text-muted-foreground">Processando...</span>
                               </div>
                             ) : (
                               <>
-                                <div className="bg-muted rounded-lg p-8 mb-8 min-h-[400px]">
-                                  <p className="text-lg leading-relaxed whitespace-pre-line">
+                                <div className="bg-muted rounded-lg p-12 mb-10 min-h-[500px]">
+                                  <p className="text-xl leading-relaxed whitespace-pre-line">
                                     {response.response}
                                   </p>
                                 </div>
@@ -342,9 +342,9 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                       variant="outline"
                                       size="lg"
                                       onClick={() => handleVote(response.modelId)}
-                                      className="flex-1 hover:border-winner hover:text-winner text-lg py-4"
+                                      className="flex-1 hover:border-winner hover:text-winner text-xl py-6"
                                     >
-                                      <ThumbsUp size={20} className="mr-3" />
+                                      <ThumbsUp size={24} className="mr-3" />
                                       Melhor Resposta
                                     </Button>
                                   </div>
@@ -352,8 +352,8 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                 
                                 {isWinner && (
                                   <div className="flex items-center justify-center py-4">
-                                    <Badge className="bg-winner text-winner-foreground text-lg px-6 py-3">
-                                      <Trophy size={18} className="mr-3" />
+                                    <Badge className="bg-winner text-winner-foreground text-xl px-8 py-4">
+                                      <Trophy size={22} className="mr-3" />
                                       Vencedor!
                                     </Badge>
                                   </div>
@@ -372,17 +372,17 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-4xl mx-auto p-6">
+            <div className="max-w-6xl mx-auto p-8">
               {/* Suggestions - only show when no results */}
               {fastestResponses.length === 0 && (
-                <div className="mb-6">
-                  <p className="text-base text-muted-foreground mb-4">Sugestões:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="mb-8">
+                  <p className="text-xl text-muted-foreground mb-6">Sugestões:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {promptSuggestions.map((suggestion, index) => (
                       <button
                         key={index}
                         onClick={() => setPrompt(suggestion)}
-                        className="text-left p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-base"
+                        className="text-left p-6 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-lg"
                       >
                         {suggestion}
                       </button>
@@ -396,7 +396,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                   placeholder="Pergunte qualquer coisa..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[160px] text-lg resize-none pr-16 border-input bg-background"
+                  className="min-h-[200px] text-xl resize-none pr-20 border-input bg-background"
                   disabled={isRunning}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -409,12 +409,12 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 <Button
                   onClick={runArena}
                   disabled={isRunning || !prompt.trim()}
-                  className="absolute bottom-4 right-4 h-10 w-10 p-0 bg-primary hover:bg-primary/90"
+                  className="absolute bottom-6 right-6 h-12 w-12 p-0 bg-primary hover:bg-primary/90"
                 >
                   {isRunning ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin" />
                   ) : (
-                    <Send className="h-5 w-5" />
+                    <Send className="h-6 w-6" />
                   )}
                 </Button>
               </div>
