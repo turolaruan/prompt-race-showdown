@@ -21,11 +21,19 @@ interface ModelResponse {
   isLoading: boolean;
 }
 
-interface ChatHistory {
+interface Message {
   id: string;
   prompt: string;
   timestamp: Date;
   winner?: string;
+  responses?: ModelResponse[];
+}
+
+interface ChatHistory {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
 }
 
 const availableModels: Model[] = [
@@ -96,16 +104,36 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       return;
     }
 
-    // Create new chat entry
-    const chatId = Date.now().toString();
-    const newChat: ChatHistory = {
-      id: chatId,
+    let chatId = currentChatId;
+    const messageId = Date.now().toString();
+    
+    // If no current chat, create a new one
+    if (!chatId) {
+      chatId = messageId;
+      const newChat: ChatHistory = {
+        id: chatId,
+        title: prompt.trim().substring(0, 50) + (prompt.trim().length > 50 ? "..." : ""),
+        messages: [],
+        createdAt: new Date(),
+      };
+      setChatHistory(prev => [newChat, ...prev]);
+      setCurrentChatId(chatId);
+    }
+
+    // Create new message
+    const newMessage: Message = {
+      id: messageId,
       prompt: prompt.trim(),
       timestamp: new Date(),
     };
-    
-    setChatHistory(prev => [newChat, ...prev]);
-    setCurrentChatId(chatId);
+
+    // Add message to current chat
+    setChatHistory(prev => prev.map(chat => 
+      chat.id === chatId 
+        ? { ...chat, messages: [...chat.messages, newMessage] }
+        : chat
+    ));
+
     setIsRunning(true);
     setFastestResponses([]);
     setWinner(null);
@@ -131,6 +159,20 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
       setFastestResponses(fastest);
       
+      // Update message with responses
+      setChatHistory(prev => prev.map(chat => 
+        chat.id === chatId 
+          ? { 
+              ...chat, 
+              messages: chat.messages.map(msg => 
+                msg.id === messageId 
+                  ? { ...msg, responses: fastest }
+                  : msg
+              )
+            }
+          : chat
+      ));
+      
       toast({
         title: "Arena Concluída!",
         description: `Os 2 modelos mais rápidos foram selecionados para comparação`,
@@ -149,14 +191,19 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
   const handleVote = (modelId: string) => {
     setWinner(modelId);
     
-    // Update chat history with winner
-    setChatHistory(prev => 
-      prev.map(chat => 
-        chat.id === currentChatId 
-          ? { ...chat, winner: modelId }
-          : chat
-      )
-    );
+    // Update the current message with winner
+    setChatHistory(prev => prev.map(chat => 
+      chat.id === currentChatId 
+        ? { 
+            ...chat, 
+            messages: chat.messages.map(msg => 
+              msg.responses && msg.responses.some(r => r.modelId === modelId) 
+                ? { ...msg, winner: modelId }
+                : msg
+            )
+          }
+        : chat
+    ));
     
     toast({
       title: "Voto registrado!",
@@ -176,9 +223,19 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
   };
 
   const loadChatFromHistory = (chat: ChatHistory) => {
-    setPrompt(chat.prompt);
     setCurrentChatId(chat.id);
-    // You could reload the responses here if needed
+    setPrompt("");
+    
+    // Load the last message's responses if available
+    const lastMessage = chat.messages[chat.messages.length - 1];
+    if (lastMessage?.responses) {
+      setFastestResponses(lastMessage.responses);
+      setWinner(lastMessage.winner || null);
+      setPrompt(lastMessage.prompt);
+    } else {
+      setFastestResponses([]);
+      setWinner(null);
+    }
   };
 
   return (
@@ -207,22 +264,21 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 <button
                   key={chat.id}
                   onClick={() => loadChatFromHistory(chat)}
-                  className="w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group"
+                  className={`w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group ${
+                    currentChatId === chat.id ? 'bg-sidebar-accent' : ''
+                  }`}
                 >
                   <div className="text-sm text-sidebar-foreground truncate mb-1">
-                    {chat.prompt}
+                    {chat.title}
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {chat.timestamp.toLocaleDateString()}
+                      {chat.createdAt.toLocaleDateString()}
                     </span>
-                    {chat.winner && (
-                      <span className="flex items-center gap-1 text-winner">
-                        <Trophy size={12} />
-                        {availableModels.find(m => m.id === chat.winner)?.name}
-                      </span>
-                    )}
+                    <span className="text-xs">
+                      {chat.messages.length} msg{chat.messages.length !== 1 ? 's' : ''}
+                    </span>
                   </div>
                 </button>
               ))}
