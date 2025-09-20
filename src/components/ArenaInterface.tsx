@@ -143,6 +143,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       });
     } finally {
       setIsRunning(false);
+      setPrompt(""); // Clear the input after sending
     }
   };
 
