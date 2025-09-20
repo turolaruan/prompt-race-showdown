@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
+import logoImage from "@/assets/gb-cs-rt-logo.png";
 
 interface Model {
   id: string;
@@ -21,19 +21,11 @@ interface ModelResponse {
   isLoading: boolean;
 }
 
-interface Message {
+interface ChatHistory {
   id: string;
   prompt: string;
   timestamp: Date;
   winner?: string;
-  responses?: ModelResponse[];
-}
-
-interface ChatHistory {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
 }
 
 const availableModels: Model[] = [
@@ -104,36 +96,16 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       return;
     }
 
-    let chatId = currentChatId;
-    const messageId = Date.now().toString();
-    
-    // If no current chat, create a new one
-    if (!chatId) {
-      chatId = messageId;
-      const newChat: ChatHistory = {
-        id: chatId,
-        title: prompt.trim().substring(0, 50) + (prompt.trim().length > 50 ? "..." : ""),
-        messages: [],
-        createdAt: new Date(),
-      };
-      setChatHistory(prev => [newChat, ...prev]);
-      setCurrentChatId(chatId);
-    }
-
-    // Create new message
-    const newMessage: Message = {
-      id: messageId,
+    // Create new chat entry
+    const chatId = Date.now().toString();
+    const newChat: ChatHistory = {
+      id: chatId,
       prompt: prompt.trim(),
       timestamp: new Date(),
     };
-
-    // Add message to current chat
-    setChatHistory(prev => prev.map(chat => 
-      chat.id === chatId 
-        ? { ...chat, messages: [...chat.messages, newMessage] }
-        : chat
-    ));
-
+    
+    setChatHistory(prev => [newChat, ...prev]);
+    setCurrentChatId(chatId);
     setIsRunning(true);
     setFastestResponses([]);
     setWinner(null);
@@ -159,20 +131,6 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
       setFastestResponses(fastest);
       
-      // Update message with responses
-      setChatHistory(prev => prev.map(chat => 
-        chat.id === chatId 
-          ? { 
-              ...chat, 
-              messages: chat.messages.map(msg => 
-                msg.id === messageId 
-                  ? { ...msg, responses: fastest }
-                  : msg
-              )
-            }
-          : chat
-      ));
-      
       toast({
         title: "Arena Concluída!",
         description: `Os 2 modelos mais rápidos foram selecionados para comparação`,
@@ -191,19 +149,14 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
   const handleVote = (modelId: string) => {
     setWinner(modelId);
     
-    // Update the current message with winner
-    setChatHistory(prev => prev.map(chat => 
-      chat.id === currentChatId 
-        ? { 
-            ...chat, 
-            messages: chat.messages.map(msg => 
-              msg.responses && msg.responses.some(r => r.modelId === modelId) 
-                ? { ...msg, winner: modelId }
-                : msg
-            )
-          }
-        : chat
-    ));
+    // Update chat history with winner
+    setChatHistory(prev => 
+      prev.map(chat => 
+        chat.id === currentChatId 
+          ? { ...chat, winner: modelId }
+          : chat
+      )
+    );
     
     toast({
       title: "Voto registrado!",
@@ -223,19 +176,9 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
   };
 
   const loadChatFromHistory = (chat: ChatHistory) => {
+    setPrompt(chat.prompt);
     setCurrentChatId(chat.id);
-    setPrompt("");
-    
-    // Load the last message's responses if available
-    const lastMessage = chat.messages[chat.messages.length - 1];
-    if (lastMessage?.responses) {
-      setFastestResponses(lastMessage.responses);
-      setWinner(lastMessage.winner || null);
-      setPrompt(lastMessage.prompt);
-    } else {
-      setFastestResponses([]);
-      setWinner(null);
-    }
+    // You could reload the responses here if needed
   };
 
   return (
@@ -243,8 +186,8 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       {/* Sidebar */}
       <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
         <div className="p-4">
-          <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
-            <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
+          <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-xl mb-6">
+            <img src={logoImage} alt="GB-CS-RT Logo" className="w-8 h-8" />
             GB-CS-RT
           </div>
           
@@ -264,21 +207,22 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 <button
                   key={chat.id}
                   onClick={() => loadChatFromHistory(chat)}
-                  className={`w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group ${
-                    currentChatId === chat.id ? 'bg-sidebar-accent' : ''
-                  }`}
+                  className="w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group"
                 >
                   <div className="text-sm text-sidebar-foreground truncate mb-1">
-                    {chat.title}
+                    {chat.prompt}
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {chat.createdAt.toLocaleDateString()}
+                      {chat.timestamp.toLocaleDateString()}
                     </span>
-                    <span className="text-xs">
-                      {chat.messages.length} msg{chat.messages.length !== 1 ? 's' : ''}
-                    </span>
+                    {chat.winner && (
+                      <span className="flex items-center gap-1 text-winner">
+                        <Trophy size={12} />
+                        {availableModels.find(m => m.id === chat.winner)?.name}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))}
@@ -323,26 +267,26 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">
+                <h1 className="text-7xl font-bold text-foreground mb-8 text-center">
                   Encontre a melhor IA para você
                 </h1>
                 
-                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">
+                <p className="text-2xl text-muted-foreground text-center mb-12 max-w-5xl">
                   Compare respostas entre os principais modelos de IA, compartilhe seu feedback e contribua para nosso ranking público
                 </p>
               </div>
             ) : (
               /* Results View */
-              <div className="p-12">
-                <div className="max-w-full mx-auto px-8">
+              <div className="p-8">
+                <div className="max-w-7xl mx-auto">
                   {/* Header */}
-                  <div className="mb-12">
+                  <div className="mb-10">
                     <h2 className="text-4xl font-semibold text-foreground mb-4">Comparação de Modelos</h2>
-                    <p className="text-2xl text-muted-foreground">Prompt: "{prompt}"</p>
+                    <p className="text-xl text-muted-foreground">Prompt: "{prompt}"</p>
                   </div>
 
                   {/* Results Grid */}
-                  <div className="grid md:grid-cols-2 gap-8">
+                  <div className="grid md:grid-cols-2 gap-10">
                     {fastestResponses.slice(0, 2).map((response, index) => {
                       const modelInfo = getModelInfo(response.modelId);
                       const isWinner = winner === response.modelId;
@@ -351,14 +295,14 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                       return (
                         <Card 
                           key={response.modelId} 
-                          className={`relative overflow-hidden transition-all duration-300 ${
+                          className={`relative overflow-hidden transition-all duration-300 h-full ${
                             isWinner ? 'ring-2 ring-winner shadow-lg' : 'hover:shadow-md'
                           }`}
                         >
-                          <CardHeader className="pb-6">
+                          <CardHeader className="pb-8">
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-xl px-6 py-3">
+                              <div className="flex items-center gap-4">
+                                <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-lg px-6 py-3">
                                   #{index + 1}° Lugar
                                 </Badge>
                                 <div>
@@ -371,46 +315,46 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                 </div>
                               </div>
                               {!isLoading && (
-                                <div className="flex items-center gap-1 text-xl text-muted-foreground">
-                                  <Timer size={22} />
+                                <div className="flex items-center gap-2 text-xl text-muted-foreground">
+                                  <Timer size={20} />
                                   {formatTime(response.responseTime)}
                                 </div>
                               )}
                             </div>
                           </CardHeader>
                           
-                          <CardContent>
+                          <CardContent className="flex flex-col h-full pb-8">
                             {isLoading ? (
-                              <div className="flex items-center justify-center py-16">
+                              <div className="flex items-center justify-center py-20">
                                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                                <span className="ml-4 text-xl text-muted-foreground">Processando...</span>
+                                <span className="ml-6 text-xl text-muted-foreground">Processando...</span>
                               </div>
                             ) : (
                               <>
-                                <div className="bg-muted rounded-lg p-12 mb-10 min-h-[500px]">
+                                <div className="bg-muted rounded-lg p-10 mb-10 flex-1 min-h-[500px]">
                                   <p className="text-xl leading-relaxed whitespace-pre-line">
                                     {response.response}
                                   </p>
                                 </div>
                                 
                                 {!winner && (
-                                  <div className="flex gap-3">
+                                  <div className="flex gap-4">
                                     <Button
                                       variant="outline"
                                       size="lg"
                                       onClick={() => handleVote(response.modelId)}
                                       className="flex-1 hover:border-winner hover:text-winner text-xl py-6"
                                     >
-                                      <ThumbsUp size={24} className="mr-3" />
+                                      <ThumbsUp size={24} className="mr-4" />
                                       Melhor Resposta
                                     </Button>
                                   </div>
                                 )}
                                 
                                 {isWinner && (
-                                  <div className="flex items-center justify-center py-4">
+                                  <div className="flex items-center justify-center py-6">
                                     <Badge className="bg-winner text-winner-foreground text-xl px-8 py-4">
-                                      <Trophy size={22} className="mr-3" />
+                                      <Trophy size={20} className="mr-4" />
                                       Vencedor!
                                     </Badge>
                                   </div>
@@ -429,11 +373,11 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-6xl mx-auto p-8">
+            <div className="max-w-4xl mx-auto p-6">
               {/* Suggestions - only show when no results */}
               {fastestResponses.length === 0 && (
                 <div className="mb-8">
-                  <p className="text-xl text-muted-foreground mb-6">Sugestões:</p>
+                  <p className="text-lg text-muted-foreground mb-6">Sugestões:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {promptSuggestions.map((suggestion, index) => (
                       <button
@@ -453,7 +397,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                   placeholder="Pergunte qualquer coisa..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[200px] text-xl resize-none pr-20 border-input bg-background"
+                  className="min-h-[180px] text-xl resize-none pr-20 border-input bg-background"
                   disabled={isRunning}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -466,7 +410,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 <Button
                   onClick={runArena}
                   disabled={isRunning || !prompt.trim()}
-                  className="absolute bottom-6 right-6 h-12 w-12 p-0 bg-primary hover:bg-primary/90"
+                  className="absolute bottom-4 right-4 h-12 w-12 p-0 bg-primary hover:bg-primary/90"
                 >
                   {isRunning ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
