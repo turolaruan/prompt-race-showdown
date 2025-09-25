@@ -336,7 +336,7 @@ const ArenaInterface = () => {
                                   try {
                                     const parsedResponse = JSON.parse(response.response);
                                     return (
-                                      <>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="bg-muted rounded-lg p-8">
                                           <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
                                             <Badge variant="outline" className="text-sm">Output 1</Badge>
@@ -353,7 +353,7 @@ const ArenaInterface = () => {
                                             {parsedResponse.output2}
                                           </p>
                                         </div>
-                                      </>
+                                      </div>
                                     );
                                   } catch (error) {
                                     return (
