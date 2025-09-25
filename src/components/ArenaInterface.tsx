@@ -74,16 +74,18 @@ const ArenaInterface = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        mode: "no-cors", // Add this to handle CORS
         body: JSON.stringify({
           prompt: prompt,
           timestamp: new Date().toISOString(),
         }),
       });
 
-      // Since we're using no-cors, we won't get a proper response
-      // Return a success indicator
-      return { success: true };
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("Error sending prompt to endpoint:", error);
       throw error;
@@ -130,15 +132,17 @@ const ArenaInterface = () => {
 
     try {
       const startTime = Date.now();
-      await sendPromptToEndpoint(currentPrompt);
+      const apiResponse = await sendPromptToEndpoint(currentPrompt);
       const endTime = Date.now();
       const responseTime = endTime - startTime;
 
-      // Since we can't get the actual response with no-cors mode,
-      // we'll show a placeholder and ask user to check the n8n workflow
+      // Process the expected response format with output1 and output2
       const finalResponse: ModelResponse = {
         modelId: "api-response",
-        response: "✅ Prompt enviado com sucesso para o n8n!\n\nComo estamos usando mode: 'no-cors', não conseguimos receber a resposta diretamente aqui.\n\nPor favor, verifique seu workflow n8n para ver o resultado do processamento.\n\nOs outputs 'output1' e 'output2' estarão disponíveis no seu workflow.",
+        response: JSON.stringify({
+          output1: apiResponse.output1 || "Resposta não disponível",
+          output2: apiResponse.output2 || "Resposta não disponível"
+        }),
         responseTime: responseTime,
         isLoading: false,
       };
@@ -146,8 +150,8 @@ const ArenaInterface = () => {
       setFastestResponses([finalResponse]);
       
       toast({
-        title: "Prompt Enviado!",
-        description: "O prompt foi enviado com sucesso para o n8n. Verifique seu workflow para ver os resultados.",
+        title: "Resposta Recebida!",
+        description: "O prompt foi processado com sucesso pelo n8n.",
       });
     } catch (error) {
       setFastestResponses([]);
@@ -327,10 +331,40 @@ const ArenaInterface = () => {
                                 <span className="ml-4 text-xl text-muted-foreground">Processando...</span>
                               </div>
                             ) : (
-                              <div className="bg-muted rounded-lg p-12 min-h-[300px]">
-                                <p className="text-xl leading-relaxed whitespace-pre-line">
-                                  {response.response}
-                                </p>
+                              <div className="space-y-6">
+                                {(() => {
+                                  try {
+                                    const parsedResponse = JSON.parse(response.response);
+                                    return (
+                                      <>
+                                        <div className="bg-muted rounded-lg p-8">
+                                          <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                                            <Badge variant="outline" className="text-sm">Output 1</Badge>
+                                          </h4>
+                                          <p className="text-lg leading-relaxed whitespace-pre-line">
+                                            {parsedResponse.output1}
+                                          </p>
+                                        </div>
+                                        <div className="bg-muted rounded-lg p-8">
+                                          <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                                            <Badge variant="outline" className="text-sm">Output 2</Badge>
+                                          </h4>
+                                          <p className="text-lg leading-relaxed whitespace-pre-line">
+                                            {parsedResponse.output2}
+                                          </p>
+                                        </div>
+                                      </>
+                                    );
+                                  } catch (error) {
+                                    return (
+                                      <div className="bg-muted rounded-lg p-12 min-h-[300px]">
+                                        <p className="text-xl leading-relaxed whitespace-pre-line">
+                                          {response.response}
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                })()}
                               </div>
                             )}
                           </CardContent>
