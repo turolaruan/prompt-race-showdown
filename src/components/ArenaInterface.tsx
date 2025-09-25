@@ -65,25 +65,31 @@ const ArenaInterface = () => {
     return `${remainingSeconds}s`;
   };
 
-  const simulateModelResponse = async (model: Model, prompt: string): Promise<ModelResponse> => {
-    const baseTime = model.speed;
-    const variation = Math.random() * 500 - 250; // ±250ms variation
-    const actualTime = Math.max(1000, baseTime + variation);
+  const sendPromptToEndpoint = async (prompt: string): Promise<any> => {
+    const endpoint = "https://n8n.utopiaco.com.br/webhook/ca195c1a-f7dc-498d-916e-0c62a18bdc36";
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          timestamp: new Date().toISOString(),
+        }),
+      });
 
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          modelId: model.id,
-          response: `Esta é uma resposta simulada do ${model.name} para: "${prompt}". 
-          
-O modelo ${model.name} da ${model.provider} processou sua solicitação e fornece esta resposta detalhada que demonstra suas capacidades de compreensão e geração de texto. 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-Esta simulação mostra como diferentes modelos podem ter velocidades e estilos de resposta variados, permitindo uma comparação efetiva entre eles.`,
-          responseTime: actualTime,
-          isLoading: false,
-        });
-      }, actualTime);
-    });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error sending prompt to endpoint:", error);
+      throw error;
+    }
   };
 
   const runArena = async () => {
@@ -96,11 +102,13 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
       return;
     }
 
+    const currentPrompt = prompt.trim();
+    
     // Create new chat entry
     const chatId = Date.now().toString();
     const newChat: ChatHistory = {
       id: chatId,
-      prompt: prompt.trim(),
+      prompt: currentPrompt,
       timestamp: new Date(),
     };
     
@@ -110,35 +118,42 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
     setFastestResponses([]);
     setWinner(null);
 
-    // Initialize loading states for all models
-    const loadingResponses = availableModels.map(model => ({
-      modelId: model.id,
+    // Clear the prompt input
+    setPrompt("");
+
+    // Show loading state
+    const loadingResponse: ModelResponse = {
+      modelId: "api-response",
       response: "",
       responseTime: 0,
       isLoading: true,
-    }));
-    setFastestResponses(loadingResponses);
+    };
+    setFastestResponses([loadingResponse]);
 
     try {
-      // Start all model requests simultaneously
-      const responses = await Promise.all(
-        availableModels.map(model => simulateModelResponse(model, prompt))
-      );
+      const startTime = Date.now();
+      const apiResponse = await sendPromptToEndpoint(currentPrompt);
+      const endTime = Date.now();
+      const responseTime = endTime - startTime;
 
-      // Sort by response time and get the 2 fastest
-      const sortedResponses = responses.sort((a, b) => a.responseTime - b.responseTime);
-      const fastest = sortedResponses.slice(0, 2);
+      const finalResponse: ModelResponse = {
+        modelId: "api-response",
+        response: apiResponse.response || JSON.stringify(apiResponse, null, 2),
+        responseTime: responseTime,
+        isLoading: false,
+      };
 
-      setFastestResponses(fastest);
+      setFastestResponses([finalResponse]);
       
       toast({
-        title: "Arena Concluída!",
-        description: `Os 2 modelos mais rápidos foram selecionados para comparação`,
+        title: "Resposta Recebida!",
+        description: "O prompt foi processado com sucesso.",
       });
     } catch (error) {
+      setFastestResponses([]);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro durante a execução do arena.",
+        description: "Ocorreu um erro ao enviar o prompt para o endpoint.",
         variant: "destructive",
       });
     } finally {
@@ -147,21 +162,7 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
   };
 
   const handleVote = (modelId: string) => {
-    setWinner(modelId);
-    
-    // Update chat history with winner
-    setChatHistory(prev => 
-      prev.map(chat => 
-        chat.id === currentChatId 
-          ? { ...chat, winner: modelId }
-          : chat
-      )
-    );
-    
-    toast({
-      title: "Voto registrado!",
-      description: `Você votou no ${availableModels.find(m => m.id === modelId)?.name}`,
-    });
+    // Removed voting system since we only have one API response
   };
 
   const getModelInfo = (modelId: string) => {
@@ -268,11 +269,11 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
 
                 {/* Main Heading */}
                 <h1 className="text-8xl font-bold text-foreground mb-8 text-center">
-                  Encontre a melhor IA para você
+                  Converse com IA
                 </h1>
                 
                 <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">
-                  Compare respostas entre os principais modelos de IA, compartilhe seu feedback e contribua para nosso ranking público
+                  Faça perguntas e obtenha respostas inteligentes processadas por nossa IA
                 </p>
               </div>
             ) : (
@@ -281,36 +282,32 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                 <div className="max-w-full mx-auto px-8">
                   {/* Header */}
                   <div className="mb-12">
-                    <h2 className="text-4xl font-semibold text-foreground mb-4">Comparação de Modelos</h2>
-                    <p className="text-2xl text-muted-foreground">Prompt: "{prompt}"</p>
+                    <h2 className="text-4xl font-semibold text-foreground mb-4">Resposta da IA</h2>
+                    <p className="text-2xl text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
                   </div>
 
-                  {/* Results Grid */}
-                  <div className="grid md:grid-cols-2 gap-8">
-                    {fastestResponses.slice(0, 2).map((response, index) => {
-                      const modelInfo = getModelInfo(response.modelId);
-                      const isWinner = winner === response.modelId;
+                  {/* Results Display */}
+                  <div className="max-w-4xl mx-auto">
+                    {fastestResponses.map((response, index) => {
                       const isLoading = response.isLoading;
                       
                       return (
                         <Card 
                           key={response.modelId} 
-                          className={`relative overflow-hidden transition-all duration-300 ${
-                            isWinner ? 'ring-2 ring-winner shadow-lg' : 'hover:shadow-md'
-                          }`}
+                          className="relative overflow-hidden transition-all duration-300 hover:shadow-md"
                         >
                           <CardHeader className="pb-6">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <Badge variant={index === 0 ? "default" : "secondary"} className="bg-primary text-primary-foreground text-xl px-6 py-3">
-                                  #{index + 1}° Lugar
+                                <Badge className="bg-primary text-primary-foreground text-xl px-6 py-3">
+                                  API Response
                                 </Badge>
                                 <div>
                                   <CardTitle className="text-3xl">
-                                    {winner ? modelInfo?.name : `Modelo ${String.fromCharCode(65 + index)}`}
+                                    Resposta da IA
                                   </CardTitle>
                                   <p className="text-xl text-muted-foreground">
-                                    {winner ? modelInfo?.provider : "Provedor oculto"}
+                                    Processado via n8n
                                   </p>
                                 </div>
                               </div>
@@ -330,36 +327,11 @@ Esta simulação mostra como diferentes modelos podem ter velocidades e estilos 
                                 <span className="ml-4 text-xl text-muted-foreground">Processando...</span>
                               </div>
                             ) : (
-                              <>
-                                <div className="bg-muted rounded-lg p-12 mb-10 min-h-[500px]">
-                                  <p className="text-xl leading-relaxed whitespace-pre-line">
-                                    {response.response}
-                                  </p>
-                                </div>
-                                
-                                {!winner && (
-                                  <div className="flex gap-3">
-                                    <Button
-                                      variant="outline"
-                                      size="lg"
-                                      onClick={() => handleVote(response.modelId)}
-                                      className="flex-1 hover:border-winner hover:text-winner text-xl py-6"
-                                    >
-                                      <ThumbsUp size={24} className="mr-3" />
-                                      Melhor Resposta
-                                    </Button>
-                                  </div>
-                                )}
-                                
-                                {isWinner && (
-                                  <div className="flex items-center justify-center py-4">
-                                    <Badge className="bg-winner text-winner-foreground text-xl px-8 py-4">
-                                      <Trophy size={22} className="mr-3" />
-                                      Vencedor!
-                                    </Badge>
-                                  </div>
-                                )}
-                              </>
+                              <div className="bg-muted rounded-lg p-12 min-h-[300px]">
+                                <p className="text-xl leading-relaxed whitespace-pre-line">
+                                  {response.response}
+                                </p>
+                              </div>
                             )}
                           </CardContent>
                         </Card>
