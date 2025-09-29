@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,13 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
-
-interface Model {
-  id: string;
-  name: string;
-  provider: string;
-  speed: number; // milliseconds
-}
 
 interface ModelResponse {
   modelId: string;
@@ -28,24 +21,36 @@ interface ChatHistory {
   winner?: string;
 }
 
-const availableModels: Model[] = [
-  { id: "gpt-4", name: "GPT-4", provider: "OpenAI", speed: 2000 },
-  { id: "claude-3", name: "Claude 3", provider: "Anthropic", speed: 1800 },
-  { id: "gemini-pro", name: "Gemini Pro", provider: "Google", speed: 2200 },
-  { id: "deepseek", name: "DeepSeek", provider: "DeepSeek", speed: 1500 },
-  { id: "llama-2", name: "Llama 2", provider: "Meta", speed: 2500 },
-  { id: "mixtral", name: "Mixtral", provider: "Mistral", speed: 1900 },
-];
+interface OutputDetails {
+  id: string;
+  modelId: string;
+  modelName: string;
+  response: string;
+  responseTimeMs: number;
+}
+
+const getModelDisplayName = (modelId: string): string => {
+  if (!modelId) {
+    return "Modelo desconhecido";
+  }
+  const cleanId = modelId.trim();
+  const parts = cleanId.split("/").filter(Boolean);
+  const lastSegment = parts[parts.length - 1];
+  if (lastSegment && lastSegment.length > 0) {
+    return lastSegment;
+  }
+  return cleanId;
+};
 
 const ArenaInterface = () => {
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
-  const [winner, setWinner] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<string | null>(null);
+  const [outputs, setOutputs] = useState<OutputDetails[]>([]);
 
   const promptSuggestions = [
     "Explique como funciona a inteligência artificial",
@@ -57,18 +62,30 @@ const ArenaInterface = () => {
   ];
 
   const formatTime = (milliseconds: number): string => {
+    if (milliseconds < 1000) {
+      return `${Math.round(milliseconds)}ms`;
+    }
+
     const totalSeconds = Math.floor(milliseconds / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    
+
     if (minutes > 0) {
       return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
-    return `0:${seconds.toString().padStart(2, '0')}`;
+    return `${seconds}s`;
   };
 
+  const outputsById = useMemo(() => {
+    return outputs.reduce<Record<string, OutputDetails>>((acc, item) => {
+      acc[item.id] = item;
+      return acc;
+    }, {});
+  }, [outputs]);
+
   const sendPromptToEndpoint = async (prompt: string): Promise<any> => {
-    const endpoint = "https://n8n.utopiaco.com.br/webhook/ca195c1a-f7dc-498d-916e-0c62a18bdc36";
+    const baseUrl = import.meta.env.VITE_API_TCC_BASE_URL ?? "http://localhost:8000";
+    const endpoint = `${baseUrl.replace(/\/$/, "")}/infer`;
     
     try {
       const response = await fetch(endpoint, {
@@ -78,7 +95,6 @@ const ArenaInterface = () => {
         },
         body: JSON.stringify({
           prompt: prompt,
-          timestamp: new Date().toISOString(),
         }),
       });
 
@@ -118,16 +134,16 @@ const ArenaInterface = () => {
     setCurrentChatId(chatId);
     setIsRunning(true);
     setFastestResponses([]);
-    setWinner(null);
     setHasVoted(false);
     setVotedFor(null);
+    setOutputs([]);
 
     // Clear the prompt input
     setPrompt("");
 
     // Show loading state
     const loadingResponse: ModelResponse = {
-      modelId: "api-response",
+      modelId: "api-tcc",
       response: "",
       responseTime: 0,
       isLoading: true,
@@ -135,19 +151,52 @@ const ArenaInterface = () => {
     setFastestResponses([loadingResponse]);
 
     try {
-      const startTime = Date.now();
+      const now = () => (typeof performance !== "undefined" && typeof performance.now === "function")
+        ? performance.now()
+        : Date.now();
+      const requestStart = now();
       const apiResponse = await sendPromptToEndpoint(currentPrompt);
-      const endTime = Date.now();
-      const responseTime = endTime - startTime;
+      const totalDuration = Math.round(now() - requestStart);
 
-      // Process the expected response format with output1 and output2
+      const results = Array.isArray(apiResponse?.results) ? apiResponse.results : [];
+      if (results.length === 0) {
+        throw new Error("Nenhuma resposta retornada pela API TCC.");
+      }
+
+      const processedOutputs: OutputDetails[] = results.map((result: any, index: number) => {
+        const outputId = `output${index + 1}`;
+        const rawModelId = typeof result?.model === "string" ? result.model : outputId;
+        const modelName = getModelDisplayName(rawModelId);
+        const inferenceSeconds = typeof result?.inference_seconds === "number" ? result.inference_seconds : null;
+        const responseText = typeof result?.response === "string" && result.response.trim().length > 0
+          ? result.response.trim()
+          : "Resposta não disponível";
+
+        return {
+          id: outputId,
+          modelId: rawModelId,
+          modelName,
+          response: responseText,
+          responseTimeMs: inferenceSeconds !== null ? Math.round(inferenceSeconds * 1000) : totalDuration,
+        };
+      });
+
+      setOutputs(processedOutputs);
+
+      const responsePayload = {
+        outputs: processedOutputs.map(({ id, modelId, modelName, response: text, responseTimeMs }) => ({
+          id,
+          modelId,
+          modelName,
+          response: text,
+          responseTimeMs,
+        })),
+      };
+
       const finalResponse: ModelResponse = {
-        modelId: "api-response",
-        response: JSON.stringify({
-          output1: apiResponse.output1 || "Resposta não disponível",
-          output2: apiResponse.output2 || "Resposta não disponível"
-        }),
-        responseTime: responseTime,
+        modelId: "api-tcc",
+        response: JSON.stringify(responsePayload),
+        responseTime: totalDuration,
         isLoading: false,
       };
 
@@ -155,13 +204,14 @@ const ArenaInterface = () => {
       
       toast({
         title: "Resposta Recebida!",
-        description: "O prompt foi processado com sucesso pelo n8n.",
+        description: "O prompt foi processado com sucesso pela API TCC.",
       });
     } catch (error) {
       setFastestResponses([]);
+      setOutputs([]);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao enviar o prompt para o endpoint.",
+        description: "Ocorreu um erro ao enviar o prompt para a API TCC.",
         variant: "destructive",
       });
     } finally {
@@ -171,36 +221,36 @@ const ArenaInterface = () => {
 
   const handleVote = (outputId: string) => {
     if (hasVoted) return;
-    
+
+    const selectedOutput = outputsById[outputId];
+    const selectedModelName = selectedOutput?.modelName ?? outputId;
+
     setVotedFor(outputId);
     setHasVoted(true);
-    
-    // Update chat history with winner
+
     if (currentChatId) {
-      setChatHistory(prev => prev.map(chat => 
-        chat.id === currentChatId 
-          ? { ...chat, winner: outputId }
+      setChatHistory(prev => prev.map(chat =>
+        chat.id === currentChatId
+          ? { ...chat, winner: selectedModelName }
           : chat
       ));
     }
-    
+
     toast({
       title: "Voto Registrado!",
-      description: `Você votou no ${outputId === 'output1' ? 'Output 1' : 'Output 2'}. Os modelos foram revelados.`,
+      description: selectedOutput
+        ? `Você votou na resposta gerada pelo modelo ${selectedModelName}.`
+        : "Voto registrado.",
     });
-  };
-
-  const getModelInfo = (modelId: string) => {
-    return availableModels.find(model => model.id === modelId);
   };
 
   const startNewChat = () => {
     setPrompt("");
     setFastestResponses([]);
-    setWinner(null);
     setCurrentChatId(null);
     setHasVoted(false);
     setVotedFor(null);
+    setOutputs([]);
   };
 
   const loadChatFromHistory = (chat: ChatHistory) => {
@@ -248,7 +298,7 @@ const ArenaInterface = () => {
                     {chat.winner && (
                       <span className="flex items-center gap-1 text-winner">
                         <Trophy size={12} />
-                        {availableModels.find(m => m.id === chat.winner)?.name}
+                        {chat.winner}
                       </span>
                     )}
                   </div>
@@ -317,6 +367,7 @@ const ArenaInterface = () => {
                   <div className="max-w-4xl mx-auto">
                     {fastestResponses.map((response, index) => {
                       const isLoading = response.isLoading;
+                      const selectedOutput = votedFor ? outputsById[votedFor] : undefined;
                       
                       return (
                         <Card 
@@ -327,14 +378,14 @@ const ArenaInterface = () => {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <Badge className="bg-primary text-primary-foreground text-xl px-6 py-3">
-                                  API Response
+                                  API TCC
                                 </Badge>
                                 <div>
                                   <CardTitle className="text-3xl">
                                     Resposta da IA
                                   </CardTitle>
                                   <p className="text-xl text-muted-foreground">
-                                    Processado via n8n
+                                    Processado via API TCC
                                   </p>
                                 </div>
                               </div>
@@ -358,114 +409,98 @@ const ArenaInterface = () => {
                                 {(() => {
                                   try {
                                     const parsedResponse = JSON.parse(response.response);
+                                    const outputsData = Array.isArray(parsedResponse?.outputs) ? parsedResponse.outputs : [];
+                                    if (outputsData.length === 0) {
+                                      return (
+                                        <div className="bg-muted rounded-lg p-12 min-h-[300px]">
+                                          <p className="text-xl leading-relaxed whitespace-pre-line">
+                                            {response.response}
+                                          </p>
+                                        </div>
+                                      );
+                                    }
+
                                     return (
                                       <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                          {/* Output 1 */}
-                                          <div className="bg-card border border-border rounded-xl overflow-hidden">
-                                            {/* Header */}
-                                            <div className="p-6 pb-4 border-b border-border">
-                                              <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                  {votedFor === 'output1' && hasVoted && (
-                                                    <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
-                                                      #1º Lugar
-                                                    </Badge>
-                                                  )}
-                                                  {votedFor === 'output2' && hasVoted && (
-                                                    <Badge variant="outline" className="px-3 py-1">
-                                                      #2º Lugar
-                                                    </Badge>
-                                                  )}
-                                                  <div>
-                                                    <h3 className="text-lg font-semibold text-foreground">
-                                                      {hasVoted ? 'Modelo A' : 'Resposta A'}
-                                                    </h3>
-                                                    {hasVoted && (
-                                                      <p className="text-sm text-muted-foreground">Provedor A</p>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                                  <Clock size={14} />
-                                                  <span className="text-sm">{formatTime(response.responseTime)}</span>
-                                                </div>
-                                              </div>
-                                            </div>
-                                            
-                                            {/* Content */}
-                                            <div className="p-6">
-                                              <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
-                                                {parsedResponse.output1}
-                                              </p>
-                                              {!hasVoted && (
-                                                <Button
-                                                  onClick={() => handleVote('output1')}
-                                                  className="w-full bg-primary hover:bg-primary/90"
-                                                >
-                                                  <ThumbsUp className="h-4 w-4 mr-2" />
-                                                  Votar nesta resposta
-                                                </Button>
-                                              )}
-                                            </div>
-                                          </div>
+                                          {outputsData.map((item: any, outputIndex: number) => {
+                                            const outputId = typeof item?.id === "string" ? item.id : `output${outputIndex + 1}`;
+                                            const outputLetter = String.fromCharCode(65 + outputIndex);
+                                            const outputDetails = outputsById[outputId];
+                                            const title = hasVoted
+                                              ? (outputDetails?.modelName ?? `Modelo ${outputLetter}`)
+                                              : `Resposta ${outputLetter}`;
+                                            const subtitle = hasVoted
+                                              ? (outputDetails?.modelId ?? "Modelo não identificado")
+                                              : `Modelo ${outputLetter}`;
+                                            const isWinner = hasVoted && votedFor === outputId;
+                                            const isRunnerUp = hasVoted && votedFor !== outputId;
+                                            const durationMs = typeof item?.responseTimeMs === "number"
+                                              ? item.responseTimeMs
+                                              : response.responseTime;
+                                            const answerText = typeof item?.response === "string" && item.response.length > 0
+                                              ? item.response
+                                              : "Resposta não disponível";
 
-                                          {/* Output 2 */}
-                                          <div className="bg-card border border-border rounded-xl overflow-hidden">
-                                            {/* Header */}
-                                            <div className="p-6 pb-4 border-b border-border">
-                                              <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                  {votedFor === 'output2' && hasVoted && (
-                                                    <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
-                                                      #1º Lugar
-                                                    </Badge>
-                                                  )}
-                                                  {votedFor === 'output1' && hasVoted && (
-                                                    <Badge variant="outline" className="px-3 py-1">
-                                                      #2º Lugar
-                                                    </Badge>
-                                                  )}
-                                                  <div>
-                                                    <h3 className="text-lg font-semibold text-foreground">
-                                                      {hasVoted ? 'Modelo B' : 'Resposta B'}
-                                                    </h3>
-                                                    {hasVoted && (
-                                                      <p className="text-sm text-muted-foreground">Provedor B</p>
-                                                    )}
+                                            return (
+                                              <div key={outputId} className="bg-card border border-border rounded-xl overflow-hidden">
+                                                <div className="p-6 pb-4 border-b border-border">
+                                                  <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                      {isWinner && (
+                                                        <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
+                                                          #1º Lugar
+                                                        </Badge>
+                                                      )}
+                                                      {isRunnerUp && (
+                                                        <Badge variant="outline" className="px-3 py-1">
+                                                          Finalista
+                                                        </Badge>
+                                                      )}
+                                                      <div>
+                                                        <h3 className="text-lg font-semibold text-foreground">
+                                                          {title}
+                                                        </h3>
+                                                        {hasVoted && (
+                                                          <p className="text-sm text-muted-foreground break-all">
+                                                            {subtitle}
+                                                          </p>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                      <Clock size={14} />
+                                                      <span className="text-sm">{formatTime(durationMs)}</span>
+                                                    </div>
                                                   </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                                  <Clock size={14} />
-                                                  <span className="text-sm">{formatTime(response.responseTime)}</span>
+
+                                                <div className="p-6">
+                                                  <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
+                                                    {answerText}
+                                                  </p>
+                                                  {!hasVoted && (
+                                                    <Button
+                                                      onClick={() => handleVote(outputId)}
+                                                      className="w-full bg-primary hover:bg-primary/90"
+                                                    >
+                                                      <ThumbsUp className="h-4 w-4 mr-2" />
+                                                      Votar nesta resposta
+                                                    </Button>
+                                                  )}
                                                 </div>
                                               </div>
-                                            </div>
-                                            
-                                            {/* Content */}
-                                            <div className="p-6">
-                                              <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
-                                                {parsedResponse.output2}
-                                              </p>
-                                              {!hasVoted && (
-                                                <Button
-                                                  onClick={() => handleVote('output2')}
-                                                  className="w-full bg-primary hover:bg-primary/90"
-                                                >
-                                                  <ThumbsUp className="h-4 w-4 mr-2" />
-                                                  Votar nesta resposta
-                                                </Button>
-                                              )}
-                                            </div>
-                                          </div>
+                                            );
+                                          })}
                                         </div>
 
-                                        {hasVoted && (
+                                        {hasVoted && selectedOutput && (
                                           <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
                                             <p className="text-lg text-foreground">
-                                              {votedFor === 'output1' 
-                                                ? '🏆 Você votou na Resposta A (Modelo A)' 
-                                                : '🏆 Você votou na Resposta B (Modelo B)'}
+                                              🏆 Você votou na resposta gerada por {selectedOutput.modelName}.
+                                            </p>
+                                            <p className="text-sm text-muted-foreground mt-2 break-all">
+                                              Identificador do modelo: {selectedOutput.modelId}
                                             </p>
                                             <p className="text-sm text-muted-foreground mt-2">
                                               Obrigado por sua avaliação! Os modelos foram revelados.
