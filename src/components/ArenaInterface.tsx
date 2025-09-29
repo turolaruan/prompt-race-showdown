@@ -362,63 +362,101 @@ const ArenaInterface = () => {
                                       <div className="space-y-6">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                           {/* Output 1 */}
-                                          <div className="bg-muted rounded-lg p-8 relative">
-                                            <div className="flex items-center justify-between mb-4">
-                                              <h4 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                                                {hasVoted ? (
-                                                  <>
-                                                    <Badge variant="outline" className="text-sm">Modelo A</Badge>
-                                                    {votedFor === 'output1' && (
-                                                      <Trophy className="h-5 w-5 text-winner" />
+                                          <div className="bg-card border border-border rounded-xl overflow-hidden">
+                                            {/* Header */}
+                                            <div className="p-6 pb-4 border-b border-border">
+                                              <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                  {votedFor === 'output1' && hasVoted && (
+                                                    <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
+                                                      #1º Lugar
+                                                    </Badge>
+                                                  )}
+                                                  {votedFor === 'output2' && hasVoted && (
+                                                    <Badge variant="outline" className="px-3 py-1">
+                                                      #2º Lugar
+                                                    </Badge>
+                                                  )}
+                                                  <div>
+                                                    <h3 className="text-lg font-semibold text-foreground">
+                                                      {hasVoted ? 'Modelo A' : 'Resposta A'}
+                                                    </h3>
+                                                    {hasVoted && (
+                                                      <p className="text-sm text-muted-foreground">Provedor A</p>
                                                     )}
-                                                  </>
-                                                ) : (
-                                                  <Badge variant="outline" className="text-sm">Resposta A</Badge>
-                                                )}
-                                              </h4>
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                  <Clock size={14} />
+                                                  <span className="text-sm">{formatTime(response.responseTime)}</span>
+                                                </div>
+                                              </div>
                                             </div>
-                                            <p className="text-lg leading-relaxed whitespace-pre-line mb-6">
-                                              {parsedResponse.output1}
-                                            </p>
-                                            {!hasVoted && (
-                                              <Button
-                                                onClick={() => handleVote('output1')}
-                                                className="w-full bg-primary hover:bg-primary/90"
-                                              >
-                                                <ThumbsUp className="h-4 w-4 mr-2" />
-                                                Votar nesta resposta
-                                              </Button>
-                                            )}
+                                            
+                                            {/* Content */}
+                                            <div className="p-6">
+                                              <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
+                                                {parsedResponse.output1}
+                                              </p>
+                                              {!hasVoted && (
+                                                <Button
+                                                  onClick={() => handleVote('output1')}
+                                                  className="w-full bg-primary hover:bg-primary/90"
+                                                >
+                                                  <ThumbsUp className="h-4 w-4 mr-2" />
+                                                  Votar nesta resposta
+                                                </Button>
+                                              )}
+                                            </div>
                                           </div>
 
                                           {/* Output 2 */}
-                                          <div className="bg-muted rounded-lg p-8 relative">
-                                            <div className="flex items-center justify-between mb-4">
-                                              <h4 className="text-xl font-semibold text-foreground flex items-center gap-2">
-                                                {hasVoted ? (
-                                                  <>
-                                                    <Badge variant="outline" className="text-sm">Modelo B</Badge>
-                                                    {votedFor === 'output2' && (
-                                                      <Trophy className="h-5 w-5 text-winner" />
+                                          <div className="bg-card border border-border rounded-xl overflow-hidden">
+                                            {/* Header */}
+                                            <div className="p-6 pb-4 border-b border-border">
+                                              <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                  {votedFor === 'output2' && hasVoted && (
+                                                    <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
+                                                      #1º Lugar
+                                                    </Badge>
+                                                  )}
+                                                  {votedFor === 'output1' && hasVoted && (
+                                                    <Badge variant="outline" className="px-3 py-1">
+                                                      #2º Lugar
+                                                    </Badge>
+                                                  )}
+                                                  <div>
+                                                    <h3 className="text-lg font-semibold text-foreground">
+                                                      {hasVoted ? 'Modelo B' : 'Resposta B'}
+                                                    </h3>
+                                                    {hasVoted && (
+                                                      <p className="text-sm text-muted-foreground">Provedor B</p>
                                                     )}
-                                                  </>
-                                                ) : (
-                                                  <Badge variant="outline" className="text-sm">Resposta B</Badge>
-                                                )}
-                                              </h4>
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                  <Clock size={14} />
+                                                  <span className="text-sm">{formatTime(response.responseTime)}</span>
+                                                </div>
+                                              </div>
                                             </div>
-                                            <p className="text-lg leading-relaxed whitespace-pre-line mb-6">
-                                              {parsedResponse.output2}
-                                            </p>
-                                            {!hasVoted && (
-                                              <Button
-                                                onClick={() => handleVote('output2')}
-                                                className="w-full bg-primary hover:bg-primary/90"
-                                              >
-                                                <ThumbsUp className="h-4 w-4 mr-2" />
-                                                Votar nesta resposta
-                                              </Button>
-                                            )}
+                                            
+                                            {/* Content */}
+                                            <div className="p-6">
+                                              <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
+                                                {parsedResponse.output2}
+                                              </p>
+                                              {!hasVoted && (
+                                                <Button
+                                                  onClick={() => handleVote('output2')}
+                                                  className="w-full bg-primary hover:bg-primary/90"
+                                                >
+                                                  <ThumbsUp className="h-4 w-4 mr-2" />
+                                                  Votar nesta resposta
+                                                </Button>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
 
