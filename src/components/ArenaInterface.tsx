@@ -44,6 +44,8 @@ const ArenaInterface = () => {
   const [winner, setWinner] = useState<string | null>(null);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [votedFor, setVotedFor] = useState<string | null>(null);
 
   const promptSuggestions = [
     "Explique como funciona a inteligência artificial",
@@ -55,14 +57,14 @@ const ArenaInterface = () => {
   ];
 
   const formatTime = (milliseconds: number): string => {
-    const seconds = Math.floor(milliseconds / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
     
     if (minutes > 0) {
-      return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
-    return `${remainingSeconds}s`;
+    return `0:${seconds.toString().padStart(2, '0')}`;
   };
 
   const sendPromptToEndpoint = async (prompt: string): Promise<any> => {
@@ -117,6 +119,8 @@ const ArenaInterface = () => {
     setIsRunning(true);
     setFastestResponses([]);
     setWinner(null);
+    setHasVoted(false);
+    setVotedFor(null);
 
     // Clear the prompt input
     setPrompt("");
@@ -165,8 +169,25 @@ const ArenaInterface = () => {
     }
   };
 
-  const handleVote = (modelId: string) => {
-    // Removed voting system since we only have one API response
+  const handleVote = (outputId: string) => {
+    if (hasVoted) return;
+    
+    setVotedFor(outputId);
+    setHasVoted(true);
+    
+    // Update chat history with winner
+    if (currentChatId) {
+      setChatHistory(prev => prev.map(chat => 
+        chat.id === currentChatId 
+          ? { ...chat, winner: outputId }
+          : chat
+      ));
+    }
+    
+    toast({
+      title: "Voto Registrado!",
+      description: `Você votou no ${outputId === 'output1' ? 'Output 1' : 'Output 2'}. Os modelos foram revelados.`,
+    });
   };
 
   const getModelInfo = (modelId: string) => {
@@ -178,6 +199,8 @@ const ArenaInterface = () => {
     setFastestResponses([]);
     setWinner(null);
     setCurrentChatId(null);
+    setHasVoted(false);
+    setVotedFor(null);
   };
 
   const loadChatFromHistory = (chat: ChatHistory) => {
@@ -336,23 +359,81 @@ const ArenaInterface = () => {
                                   try {
                                     const parsedResponse = JSON.parse(response.response);
                                     return (
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-muted rounded-lg p-8">
-                                          <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                                            <Badge variant="outline" className="text-sm">Output 1</Badge>
-                                          </h4>
-                                          <p className="text-lg leading-relaxed whitespace-pre-line">
-                                            {parsedResponse.output1}
-                                          </p>
+                                      <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                          {/* Output 1 */}
+                                          <div className="bg-muted rounded-lg p-8 relative">
+                                            <div className="flex items-center justify-between mb-4">
+                                              <h4 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                                                {hasVoted ? (
+                                                  <>
+                                                    <Badge variant="outline" className="text-sm">Modelo A</Badge>
+                                                    {votedFor === 'output1' && (
+                                                      <Trophy className="h-5 w-5 text-winner" />
+                                                    )}
+                                                  </>
+                                                ) : (
+                                                  <Badge variant="outline" className="text-sm">Resposta A</Badge>
+                                                )}
+                                              </h4>
+                                            </div>
+                                            <p className="text-lg leading-relaxed whitespace-pre-line mb-6">
+                                              {parsedResponse.output1}
+                                            </p>
+                                            {!hasVoted && (
+                                              <Button
+                                                onClick={() => handleVote('output1')}
+                                                className="w-full bg-primary hover:bg-primary/90"
+                                              >
+                                                <ThumbsUp className="h-4 w-4 mr-2" />
+                                                Votar nesta resposta
+                                              </Button>
+                                            )}
+                                          </div>
+
+                                          {/* Output 2 */}
+                                          <div className="bg-muted rounded-lg p-8 relative">
+                                            <div className="flex items-center justify-between mb-4">
+                                              <h4 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                                                {hasVoted ? (
+                                                  <>
+                                                    <Badge variant="outline" className="text-sm">Modelo B</Badge>
+                                                    {votedFor === 'output2' && (
+                                                      <Trophy className="h-5 w-5 text-winner" />
+                                                    )}
+                                                  </>
+                                                ) : (
+                                                  <Badge variant="outline" className="text-sm">Resposta B</Badge>
+                                                )}
+                                              </h4>
+                                            </div>
+                                            <p className="text-lg leading-relaxed whitespace-pre-line mb-6">
+                                              {parsedResponse.output2}
+                                            </p>
+                                            {!hasVoted && (
+                                              <Button
+                                                onClick={() => handleVote('output2')}
+                                                className="w-full bg-primary hover:bg-primary/90"
+                                              >
+                                                <ThumbsUp className="h-4 w-4 mr-2" />
+                                                Votar nesta resposta
+                                              </Button>
+                                            )}
+                                          </div>
                                         </div>
-                                        <div className="bg-muted rounded-lg p-8">
-                                          <h4 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                                            <Badge variant="outline" className="text-sm">Output 2</Badge>
-                                          </h4>
-                                          <p className="text-lg leading-relaxed whitespace-pre-line">
-                                            {parsedResponse.output2}
-                                          </p>
-                                        </div>
+
+                                        {hasVoted && (
+                                          <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
+                                            <p className="text-lg text-foreground">
+                                              {votedFor === 'output1' 
+                                                ? '🏆 Você votou na Resposta A (Modelo A)' 
+                                                : '🏆 Você votou na Resposta B (Modelo B)'}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground mt-2">
+                                              Obrigado por sua avaliação! Os modelos foram revelados.
+                                            </p>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   } catch (error) {
