@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock } from "lucide-react";
+import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
+import Leaderboard from "./Leaderboard";
 interface ModelResponse {
   modelId: string;
   response: string;
@@ -38,6 +39,7 @@ const getModelDisplayName = (modelId: string): string => {
   return cleanId;
 };
 const ArenaInterface = () => {
+  const [currentView, setCurrentView] = useState<"chat" | "leaderboard">("chat");
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
@@ -205,6 +207,7 @@ const ArenaInterface = () => {
     });
   };
   const startNewChat = () => {
+    setCurrentView("chat");
     setPrompt("");
     setFastestResponses([]);
     setCurrentChatId(null);
@@ -226,9 +229,18 @@ const ArenaInterface = () => {
             GB-CS-RT
           </div>
           
-          <Button onClick={startNewChat} className="w-full justify-start gap-2 mb-6 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground">
+          <Button onClick={startNewChat} className="w-full justify-start gap-2 mb-4 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground">
             <MessageSquare size={16} />
             Novo Chat
+          </Button>
+
+          <Button 
+            onClick={() => setCurrentView("leaderboard")} 
+            variant={currentView === "leaderboard" ? "default" : "outline"}
+            className="w-full justify-start gap-2 mb-6"
+          >
+            <TrendingUp size={16} />
+            Leaderboard
           </Button>
           
           {/* Chat History */}
@@ -260,9 +272,12 @@ const ArenaInterface = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <div className="flex-1 flex flex-col">
-          {/* Content Area */}
-          <div className="flex-1 overflow-y-auto">
+        {currentView === "leaderboard" ? (
+          <Leaderboard />
+        ) : (
+          <div className="flex-1 flex flex-col">
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto">
             {fastestResponses.length === 0 ? (/* Initial View */
           <div className="flex flex-col items-center justify-center h-full px-[32px]">
                 {/* Model Icons */}
@@ -451,7 +466,8 @@ const ArenaInterface = () => {
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
     </div>;
 };
