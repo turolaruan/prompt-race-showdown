@@ -407,6 +407,24 @@ const ArenaInterface = () => {
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="max-w-4xl mx-auto p-8">
+              {/* Suggestions - only show when no results */}
+              {fastestResponses.length === 0 && (
+                <div className="mb-8">
+                  <p className="text-lg text-muted-foreground mb-4">Sugestões de prompt:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {promptSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setPrompt(suggestion)}
+                        className="text-left p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-base"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="relative">
                 <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[120px] text-lg resize-none pr-20 border-input bg-background rounded-xl" disabled={isRunning} onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
