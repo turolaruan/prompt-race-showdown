@@ -263,16 +263,40 @@ const ArenaInterface = () => {
         <div className="flex-1 flex flex-col">
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto">
-            {fastestResponses.length === 0 ? (
-              /* Initial View */
-              <div className="flex flex-col items-center justify-center h-full px-8">
-                <h1 className="text-5xl font-semibold text-foreground mb-4 text-center">
-                  Como posso ajudar?
+            {fastestResponses.length === 0 ? (/* Initial View */
+          <div className="flex flex-col items-center justify-center h-full px-8">
+                {/* Model Icons */}
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">G</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
+                    <span className="text-sm font-bold text-accent">C</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-secondary/40 flex items-center justify-center">
+                    <span className="text-sm font-bold text-secondary-foreground">G</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-primary/30 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">D</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-accent/30 flex items-center justify-center">
+                    <span className="text-sm font-bold text-accent">L</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-primary/25 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary">M</span>
+                  </div>
+                </div>
+
+                {/* Main Heading */}
+                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">
+                  Converse com IA
                 </h1>
-              </div>
-            ) : (
-              /* Results View */
-              <div className="p-12">
+                
+                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">
+                  Faça perguntas e obtenha respostas inteligentes processadas por nossa IA
+                </p>
+              </div>) : (/* Results View */
+          <div className="p-12">
                 <div className="max-w-full mx-auto px-8">
                   {/* Header */}
                   <div className="mb-12">
@@ -406,27 +430,19 @@ const ArenaInterface = () => {
 
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-4xl mx-auto p-8">
+            <div className="max-w-6xl mx-auto p-8">
               {/* Suggestions - only show when no results */}
-              {fastestResponses.length === 0 && (
-                <div className="mb-8">
-                  <p className="text-lg text-muted-foreground mb-4">Sugestões de prompt:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {promptSuggestions.map((suggestion, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setPrompt(suggestion)}
-                        className="text-left p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-base"
-                      >
+              {fastestResponses.length === 0 && <div className="mb-8">
+                  <p className="text-xl text-muted-foreground mb-6">Sugestões de prompt:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-6 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-lg">
                         {suggestion}
-                      </button>
-                    ))}
+                      </button>)}
                   </div>
-                </div>
-              )}
+                </div>}
               
               <div className="relative">
-                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[120px] text-lg resize-none pr-20 border-input bg-background rounded-xl" disabled={isRunning} onKeyDown={e => {
+                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[200px] text-xl resize-none pr-20 border-input bg-background" disabled={isRunning} onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   runArena();
