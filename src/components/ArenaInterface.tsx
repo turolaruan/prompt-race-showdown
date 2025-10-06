@@ -264,7 +264,7 @@ const ArenaInterface = () => {
           {/* Content Area */}
           <div className="flex-1 overflow-y-auto">
             {fastestResponses.length === 0 ? (/* Initial View */
-          <div className="flex flex-col items-center justify-center h-full px-8">
+          <div className="flex flex-col items-center justify-center h-full px-[32px]">
                 {/* Model Icons */}
                 <div className="flex items-center gap-4 mb-8">
                   <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
@@ -288,13 +288,9 @@ const ArenaInterface = () => {
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">
-                  Converse com IA
-                </h1>
+                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">Encontre a melhor IA para você</h1>
                 
-                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">
-                  Faça perguntas e obtenha respostas inteligentes processadas por nossa IA
-                </p>
+                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">Faça perguntas e obtenha respostas inteligentes, compare as respostas entre os diversos modelos e compartilhe o seu feedback </p>
               </div>) : (/* Results View */
           <div className="p-12">
                 <div className="max-w-full mx-auto px-8">
