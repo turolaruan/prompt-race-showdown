@@ -387,7 +387,7 @@ const ArenaInterface = () => {
                                                 </div>
 
                                                 <div className="p-6">
-                                                  <p className="text-base leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
+                                                  <p className="text-xl leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
                                                     {answerText}
                                                   </p>
                                                   {!hasVoted && <Button onClick={() => handleVote(outputId)} className="w-full bg-primary hover:bg-primary/90">
