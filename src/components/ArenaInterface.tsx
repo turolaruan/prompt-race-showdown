@@ -76,16 +76,12 @@ const ArenaInterface = () => {
     
     const mockModels = [
       { id: "google/gemini-2.5-pro", name: "Gemini Pro" },
-      { id: "openai/gpt-5", name: "GPT-5" },
-      { id: "anthropic/claude-3.5", name: "Claude 3.5" },
-      { id: "meta/llama-3", name: "Llama 3" }
+      { id: "openai/gpt-5", name: "GPT-5" }
     ];
 
     const mockResponses = [
-      `Esta é uma resposta simulada para "${prompt}". O modelo está processando sua solicitação com base em vastos conjuntos de dados de treinamento.`,
-      `Resposta mock gerada: ${prompt}. Esta resposta demonstra capacidades avançadas de compreensão de linguagem natural e geração de texto contextualizado.`,
-      `Mock: Em resposta a "${prompt}", aqui está uma análise detalhada. Este é um exemplo de como diferentes modelos podem interpretar e responder ao mesmo prompt.`,
-      `Simulação de resposta para o prompt fornecido. Os modelos de IA modernos utilizam arquiteturas transformer para processar e gerar respostas relevantes ao contexto.`
+      `Esta é uma resposta simulada para "${prompt}". O modelo está processando sua solicitação com base em vastos conjuntos de dados de treinamento. A inteligência artificial moderna utiliza redes neurais profundas para compreender e gerar texto de forma contextualizada, analisando padrões complexos nos dados de treinamento.`,
+      `Resposta mock gerada: ${prompt}. Esta resposta demonstra capacidades avançadas de compreensão de linguagem natural e geração de texto contextualizado. Os modelos de linguagem são treinados em bilhões de parâmetros para fornecer respostas precisas e relevantes ao contexto fornecido pelo usuário.`
     ];
 
     const results = mockModels.map((model, index) => ({
@@ -252,10 +248,10 @@ const ArenaInterface = () => {
     setCurrentChatId(chat.id);
     // You could reload the responses here if needed
   };
-  return <div className="flex h-screen bg-background">
+  return <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
-        <div className="p-4">
+      <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col max-h-screen overflow-hidden">
+        <div className="p-4 overflow-y-auto">
           <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
             <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
             GB-CS-RT
@@ -349,7 +345,7 @@ const ArenaInterface = () => {
                 </div>
 
                 {/* Main Heading */}
-                <h1 className="text-8xl font-bold text-foreground mb-8 text-center">Encontre a melhor IA para você</h1>
+                <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold text-foreground mb-8 text-center px-4">Encontre a melhor IA para você</h1>
                 
                 <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">Faça perguntas e obtenha respostas inteligentes, compare as respostas entre os diversos modelos e compartilhe o seu feedback </p>
               </div>) : (/* Results View */
@@ -357,57 +353,33 @@ const ArenaInterface = () => {
                 <div className="max-w-full mx-auto px-8">
                   {/* Header */}
                   <div className="mb-12">
-                    <h2 className="text-4xl font-semibold text-foreground mb-4">Resposta da IA</h2>
-                    <p className="text-2xl text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
+                    <h2 className="text-3xl sm:text-4xl font-semibold text-foreground mb-4">Respostas da IA</h2>
+                    <p className="text-xl sm:text-2xl text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
                   </div>
 
                   {/* Results Display */}
-                  <div className="max-w-4xl mx-auto">
+                  <div className="w-full">
                     {fastestResponses.map((response, index) => {
                   const isLoading = response.isLoading;
                   const selectedOutput = votedFor ? outputsById[votedFor] : undefined;
-                  return <Card key={response.modelId} className="relative overflow-hidden transition-all duration-300 hover:shadow-md">
-                          <CardHeader className="pb-6">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Badge className="bg-primary text-primary-foreground text-xl px-6 py-3">
-                                  API TCC
-                                </Badge>
-                                <div>
-                                  <CardTitle className="text-3xl">
-                                    Resposta da IA
-                                  </CardTitle>
-                                  <p className="text-xl text-muted-foreground">
-                                    Processado via API TCC
-                                  </p>
-                                </div>
-                              </div>
-                              {!isLoading && <div className="flex items-center gap-1 text-xl text-muted-foreground">
-                                  <Timer size={22} />
-                                  {formatTime(response.responseTime)}
-                                </div>}
-                            </div>
-                          </CardHeader>
-                          
-                          <CardContent>
+                  return <div key={response.modelId} className="relative overflow-hidden">
                             {isLoading ? <div className="flex items-center justify-center py-16">
                                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                                <span className="ml-4 text-xl text-muted-foreground">Processando...</span>
-                              </div> : <div className="space-y-6">
+                                <span className="ml-4 text-2xl text-muted-foreground">Processando...</span>
+                              </div> : <div className="space-y-8">
                                 {(() => {
                           try {
                             const parsedResponse = JSON.parse(response.response);
                             const outputsData = Array.isArray(parsedResponse?.outputs) ? parsedResponse.outputs : [];
                             if (outputsData.length === 0) {
                               return <div className="bg-muted rounded-lg p-12 min-h-[300px]">
-                                          <p className="text-xl leading-relaxed whitespace-pre-line">
+                                          <p className="text-2xl leading-relaxed whitespace-pre-line">
                                             {response.response}
                                           </p>
                                         </div>;
                             }
-                            return <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                          {outputsData.map((item: any, outputIndex: number) => {
+                            return <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        {outputsData.map((item: any, outputIndex: number) => {
                                   const outputId = typeof item?.id === "string" ? item.id : `output${outputIndex + 1}`;
                                   const outputLetter = String.fromCharCode(65 + outputIndex);
                                   const outputDetails = outputsById[outputId];
@@ -417,68 +389,55 @@ const ArenaInterface = () => {
                                   const isRunnerUp = hasVoted && votedFor !== outputId;
                                   const durationMs = typeof item?.responseTimeMs === "number" ? item.responseTimeMs : response.responseTime;
                                   const answerText = typeof item?.response === "string" && item.response.length > 0 ? item.response : "Resposta não disponível";
-                                  return <div key={outputId} className="bg-card border border-border rounded-xl overflow-hidden">
-                                                <div className="p-6 pb-4 border-b border-border">
-                                                  <div className="flex items-start justify-between mb-3">
-                                                    <div className="flex items-center gap-3">
-                                                      {isWinner && <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1">
+                                  return <Card key={outputId} className="bg-card border-2 border-border hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                                <CardHeader className="pb-4 border-b border-border">
+                                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                      {isWinner && <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-1.5 text-base">
                                                           #1º Lugar
                                                         </Badge>}
-                                                      {isRunnerUp && <Badge variant="outline" className="px-3 py-1">
+                                                      {isRunnerUp && <Badge variant="outline" className="px-4 py-1.5 text-base">
                                                           Finalista
                                                         </Badge>}
                                                       <div>
-                                                        <h3 className="text-lg font-semibold text-foreground">
+                                                        <h3 className="text-2xl font-bold text-foreground">
                                                           {title}
                                                         </h3>
-                                                        {hasVoted && <p className="text-sm text-muted-foreground break-all">
+                                                        {hasVoted && <p className="text-base text-muted-foreground break-all mt-1">
                                                             {subtitle}
                                                           </p>}
                                                       </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                                                      <Clock size={14} />
-                                                      <span className="text-sm">{formatTime(durationMs)}</span>
+                                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                                      <Clock size={18} />
+                                                      <span className="text-lg font-medium">{formatTime(durationMs)}</span>
                                                     </div>
                                                   </div>
-                                                </div>
+                                                </CardHeader>
 
-                                                <div className="p-6">
-                                                  <p className="text-xl leading-relaxed whitespace-pre-line mb-6 text-foreground/90">
+                                                <CardContent className="p-8">
+                                                  <p className="text-xl leading-relaxed whitespace-pre-line mb-8 text-foreground min-h-[200px]">
                                                     {answerText}
                                                   </p>
-                                                  {!hasVoted && <Button onClick={() => handleVote(outputId)} className="w-full bg-primary hover:bg-primary/90">
-                                                      <ThumbsUp className="h-4 w-4 mr-2" />
+                                                  {!hasVoted && <Button onClick={() => handleVote(outputId)} size="lg" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
+                                                      <ThumbsUp className="h-5 w-5 mr-2" />
                                                       Votar nesta resposta
                                                     </Button>}
-                                                </div>
-                                              </div>;
+                                                </CardContent>
+                                              </Card>;
                                 })}
-                                        </div>
-
-                                        {hasVoted && selectedOutput && <div className="bg-primary/10 border border-primary/20 rounded-lg p-6 text-center">
-                                            <p className="text-lg text-foreground">
-                                              🏆 Você votou na resposta gerada por {selectedOutput.modelName}.
-                                            </p>
-                                            <p className="text-sm text-muted-foreground mt-2 break-all">
-                                              Identificador do modelo: {selectedOutput.modelId}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground mt-2">
-                                              Obrigado por sua avaliação! Os modelos foram revelados.
-                                            </p>
-                                          </div>}
                                       </div>;
-                          } catch (error) {
+                          } catch (err) {
+                            console.error("Error parsing response:", err);
                             return <div className="bg-muted rounded-lg p-12 min-h-[300px]">
-                                        <p className="text-xl leading-relaxed whitespace-pre-line">
+                                        <p className="text-2xl leading-relaxed whitespace-pre-line">
                                           {response.response}
                                         </p>
                                       </div>;
                           }
                         })()}
                               </div>}
-                          </CardContent>
-                        </Card>;
+                          </div>;
                 })}
                   </div>
                 </div>
@@ -487,7 +446,7 @@ const ArenaInterface = () => {
 
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-6xl mx-auto p-8">
+            <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
               {/* Suggestions - only show when no results */}
               {fastestResponses.length === 0 && <div className="mb-8">
                   <p className="text-xl text-muted-foreground mb-6">Sugestões de prompt:</p>
@@ -499,15 +458,15 @@ const ArenaInterface = () => {
                 </div>}
               
               <div className="relative">
-                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[200px] text-xl resize-none pr-20 border-input bg-background" disabled={isRunning} onKeyDown={e => {
+                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[120px] sm:min-h-[150px] lg:min-h-[200px] text-base sm:text-lg lg:text-xl resize-none pr-16 sm:pr-20 border-input bg-background" disabled={isRunning} onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   runArena();
                 }
               }} />
                 
-                <Button onClick={runArena} disabled={isRunning || !prompt.trim()} className="absolute bottom-6 right-6 h-12 w-12 p-0 bg-primary hover:bg-primary/90">
-                  {isRunning ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
+                <Button onClick={runArena} disabled={isRunning || !prompt.trim()} className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 h-10 w-10 sm:h-12 sm:w-12 p-0 bg-primary hover:bg-primary/90">
+                  {isRunning ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : <Send className="h-5 w-5 sm:h-6 sm:w-6" />}
                 </Button>
               </div>
             </div>
