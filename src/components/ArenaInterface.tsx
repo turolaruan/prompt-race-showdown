@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
@@ -48,6 +50,7 @@ const ArenaInterface = () => {
   const [hasVoted, setHasVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<OutputDetails[]>([]);
+  const [useMockData, setUseMockData] = useState(true);
   const promptSuggestions = ["Explique como funciona a inteligência artificial", "Escreva um código Python para calcular fibonacci", "Qual é a diferença entre machine learning e deep learning?", "Crie uma receita de bolo de chocolate", "Explique a teoria da relatividade de Einstein", "Como funciona o algoritmo de ordenação quicksort?"];
   const formatTime = (milliseconds: number): string => {
     if (milliseconds < 1000) {
@@ -67,6 +70,33 @@ const ArenaInterface = () => {
       return acc;
     }, {});
   }, [outputs]);
+  const generateMockResponse = async (prompt: string): Promise<any> => {
+    // Simular delay da API
+    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+    
+    const mockModels = [
+      { id: "google/gemini-2.5-pro", name: "Gemini Pro" },
+      { id: "openai/gpt-5", name: "GPT-5" },
+      { id: "anthropic/claude-3.5", name: "Claude 3.5" },
+      { id: "meta/llama-3", name: "Llama 3" }
+    ];
+
+    const mockResponses = [
+      `Esta é uma resposta simulada para "${prompt}". O modelo está processando sua solicitação com base em vastos conjuntos de dados de treinamento.`,
+      `Resposta mock gerada: ${prompt}. Esta resposta demonstra capacidades avançadas de compreensão de linguagem natural e geração de texto contextualizado.`,
+      `Mock: Em resposta a "${prompt}", aqui está uma análise detalhada. Este é um exemplo de como diferentes modelos podem interpretar e responder ao mesmo prompt.`,
+      `Simulação de resposta para o prompt fornecido. Os modelos de IA modernos utilizam arquiteturas transformer para processar e gerar respostas relevantes ao contexto.`
+    ];
+
+    const results = mockModels.map((model, index) => ({
+      model: model.id,
+      response: mockResponses[index],
+      inference_seconds: 0.5 + Math.random() * 2
+    }));
+
+    return { results };
+  };
+
   const sendPromptToEndpoint = async (prompt: string): Promise<any> => {
     const baseUrl = import.meta.env.VITE_API_TCC_BASE_URL ?? "http://localhost:8000";
     const endpoint = `${baseUrl.replace(/\/$/, "")}/infer`;
@@ -130,7 +160,9 @@ const ArenaInterface = () => {
     try {
       const now = () => typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
       const requestStart = now();
-      const apiResponse = await sendPromptToEndpoint(currentPrompt);
+      const apiResponse = useMockData 
+        ? await generateMockResponse(currentPrompt)
+        : await sendPromptToEndpoint(currentPrompt);
       const totalDuration = Math.round(now() - requestStart);
       const results = Array.isArray(apiResponse?.results) ? apiResponse.results : [];
       if (results.length === 0) {
@@ -276,6 +308,20 @@ const ArenaInterface = () => {
           <Leaderboard />
         ) : (
           <div className="flex-1 flex flex-col">
+            {/* Toggle Mock/Real Mode */}
+            <div className="border-b border-border bg-muted/30 px-8 py-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="mock-mode"
+                  checked={useMockData}
+                  onCheckedChange={setUseMockData}
+                />
+                <Label htmlFor="mock-mode" className="text-sm font-medium cursor-pointer">
+                  {useMockData ? "Modo Mock" : "Endpoint Real"}
+                </Label>
+              </div>
+            </div>
+
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto">
             {fastestResponses.length === 0 ? (/* Initial View */
