@@ -349,12 +349,12 @@ const ArenaInterface = () => {
                 
                 <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">Faça perguntas e obtenha respostas inteligentes, compare as respostas entre os diversos modelos e compartilhe o seu feedback </p>
               </div>) : (/* Results View */
-          <div className="p-12">
-                <div className="max-w-full mx-auto px-8">
+           <div className="p-4 sm:p-6 lg:p-8">
+                <div className="max-w-full mx-auto px-2 sm:px-4">
                   {/* Header */}
-                  <div className="mb-12">
-                    <h2 className="text-3xl sm:text-4xl font-semibold text-foreground mb-4">Respostas da IA</h2>
-                    <p className="text-xl sm:text-2xl text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
+                  <div className="mb-6 sm:mb-8">
+                    <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-3">Respostas da IA</h2>
+                    <p className="text-base sm:text-lg text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
                   </div>
 
                   {/* Results Display */}
@@ -378,7 +378,7 @@ const ArenaInterface = () => {
                                           </p>
                                         </div>;
                             }
-                            return <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                                         {outputsData.map((item: any, outputIndex: number) => {
                                   const outputId = typeof item?.id === "string" ? item.id : `output${outputIndex + 1}`;
                                   const outputLetter = String.fromCharCode(65 + outputIndex);
@@ -390,37 +390,37 @@ const ArenaInterface = () => {
                                   const durationMs = typeof item?.responseTimeMs === "number" ? item.responseTimeMs : response.responseTime;
                                   const answerText = typeof item?.response === "string" && item.response.length > 0 ? item.response : "Resposta não disponível";
                                   return <Card key={outputId} className="bg-card border-2 border-border hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                <CardHeader className="pb-4 border-b border-border">
-                                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                                                    <div className="flex items-center gap-3 flex-wrap">
-                                                      {isWinner && <Badge className="bg-primary/20 text-primary border-primary/30 px-4 py-1.5 text-base">
+                                                <CardHeader className="pb-3 border-b border-border p-4 sm:p-6">
+                                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      {isWinner && <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1 text-sm">
                                                           #1º Lugar
                                                         </Badge>}
-                                                      {isRunnerUp && <Badge variant="outline" className="px-4 py-1.5 text-base">
+                                                      {isRunnerUp && <Badge variant="outline" className="px-3 py-1 text-sm">
                                                           Finalista
                                                         </Badge>}
                                                       <div>
-                                                        <h3 className="text-2xl font-bold text-foreground">
+                                                        <h3 className="text-lg sm:text-xl font-bold text-foreground">
                                                           {title}
                                                         </h3>
-                                                        {hasVoted && <p className="text-base text-muted-foreground break-all mt-1">
+                                                        {hasVoted && <p className="text-xs sm:text-sm text-muted-foreground break-all mt-0.5">
                                                             {subtitle}
                                                           </p>}
                                                       </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                                      <Clock size={18} />
-                                                      <span className="text-lg font-medium">{formatTime(durationMs)}</span>
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                      <Clock size={16} />
+                                                      <span className="text-sm font-medium">{formatTime(durationMs)}</span>
                                                     </div>
                                                   </div>
                                                 </CardHeader>
 
-                                                <CardContent className="p-8">
-                                                  <p className="text-xl leading-relaxed whitespace-pre-line mb-8 text-foreground min-h-[200px]">
+                                                <CardContent className="p-4 sm:p-6">
+                                                  <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line mb-4 sm:mb-6 text-foreground min-h-[150px]">
                                                     {answerText}
                                                   </p>
-                                                  {!hasVoted && <Button onClick={() => handleVote(outputId)} size="lg" className="w-full bg-primary hover:bg-primary/90 text-lg py-6">
-                                                      <ThumbsUp className="h-5 w-5 mr-2" />
+                                                  {!hasVoted && <Button onClick={() => handleVote(outputId)} className="w-full bg-primary hover:bg-primary/90 text-base py-5">
+                                                      <ThumbsUp className="h-4 w-4 mr-2" />
                                                       Votar nesta resposta
                                                     </Button>}
                                                 </CardContent>
@@ -446,27 +446,27 @@ const ArenaInterface = () => {
 
           {/* Input Area - Always at bottom */}
           <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
+            <div className="max-w-6xl mx-auto p-3 sm:p-4 lg:p-6">
               {/* Suggestions - only show when no results */}
-              {fastestResponses.length === 0 && <div className="mb-8">
-                  <p className="text-xl text-muted-foreground mb-6">Sugestões de prompt:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-6 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-lg">
+              {fastestResponses.length === 0 && <div className="mb-4">
+                  <p className="text-base sm:text-lg text-muted-foreground mb-3">Sugestões de prompt:</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
+                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-3 sm:p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-sm sm:text-base">
                         {suggestion}
                       </button>)}
                   </div>
                 </div>}
               
               <div className="relative">
-                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[120px] sm:min-h-[150px] lg:min-h-[200px] text-base sm:text-lg lg:text-xl resize-none pr-16 sm:pr-20 border-input bg-background" disabled={isRunning} onKeyDown={e => {
+                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] text-sm sm:text-base resize-none pr-14 sm:pr-16 border-input bg-background" disabled={isRunning} onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   runArena();
                 }
               }} />
                 
-                <Button onClick={runArena} disabled={isRunning || !prompt.trim()} className="absolute bottom-4 sm:bottom-6 right-4 sm:right-6 h-10 w-10 sm:h-12 sm:w-12 p-0 bg-primary hover:bg-primary/90">
-                  {isRunning ? <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin" /> : <Send className="h-5 w-5 sm:h-6 sm:w-6" />}
+                <Button onClick={runArena} disabled={isRunning || !prompt.trim()} className="absolute bottom-3 sm:bottom-4 right-3 sm:right-4 h-9 w-9 sm:h-10 sm:w-10 p-0 bg-primary hover:bg-primary/90">
+                  {isRunning ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Send className="h-4 w-4 sm:h-5 sm:w-5" />}
                 </Button>
               </div>
             </div>
