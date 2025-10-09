@@ -416,7 +416,7 @@ const ArenaInterface = () => {
                                                 </CardHeader>
 
                                                 <CardContent className="p-4 sm:p-6">
-                                                  <p className="text-base sm:text-lg leading-relaxed whitespace-pre-line mb-4 sm:mb-6 text-foreground min-h-[150px]">
+                                                  <p className="text-lg sm:text-xl lg:text-2xl leading-relaxed whitespace-pre-line mb-4 sm:mb-6 text-foreground min-h-[150px]">
                                                     {answerText}
                                                   </p>
                                                   {!hasVoted && <Button onClick={() => handleVote(outputId)} className="w-full bg-primary hover:bg-primary/90 text-base py-5">
