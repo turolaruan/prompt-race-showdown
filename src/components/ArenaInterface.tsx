@@ -423,6 +423,17 @@ const ArenaInterface = () => {
                                                       <ThumbsUp className="h-4 w-4 mr-2" />
                                                       Votar nesta resposta
                                                     </Button>}
+                                                  {hasVoted && votedFor === outputId && (
+                                                    <div className="bg-primary/10 border-2 border-primary rounded-lg p-4 mt-4">
+                                                      <div className="flex items-center gap-3 mb-2">
+                                                        <Trophy className="h-6 w-6 text-primary" />
+                                                        <h4 className="text-xl font-bold text-primary">Parabéns!</h4>
+                                                      </div>
+                                                      <p className="text-base text-foreground">
+                                                        Você votou em: <span className="font-semibold">{subtitle}</span>
+                                                      </p>
+                                                    </div>
+                                                  )}
                                                 </CardContent>
                                               </Card>;
                                 })}
