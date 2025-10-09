@@ -460,16 +460,16 @@ const ArenaInterface = () => {
             <div className="max-w-6xl mx-auto p-3 sm:p-4 lg:p-6">
               {/* Suggestions - only show when no results */}
               {fastestResponses.length === 0 && <div className="mb-4">
-                  <p className="text-base sm:text-lg text-muted-foreground mb-3">Sugestões de prompt:</p>
+                  <p className="text-lg sm:text-xl text-muted-foreground mb-3">Sugestões de prompt:</p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-3 sm:p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-sm sm:text-base">
+                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-3 sm:p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-base sm:text-lg">
                         {suggestion}
                       </button>)}
                   </div>
                 </div>}
               
               <div className="relative">
-                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] text-sm sm:text-base resize-none pr-14 sm:pr-16 border-input bg-background" disabled={isRunning} onKeyDown={e => {
+                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] text-base sm:text-lg resize-none pr-14 sm:pr-16 border-input bg-background" disabled={isRunning} onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   runArena();
