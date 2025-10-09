@@ -436,22 +436,6 @@ const ArenaInterface = () => {
                                       </div>;
                           }
                         })()}
-
-                                {/* Congratulations Message */}
-                                {hasVoted && selectedOutput && (
-                                  <div className="mt-8 p-6 bg-primary/10 border-2 border-primary/30 rounded-lg">
-                                    <div className="flex items-center gap-3 mb-3">
-                                      <Trophy className="h-6 w-6 text-primary" />
-                                      <h3 className="text-2xl font-bold text-foreground">Parabéns!</h3>
-                                    </div>
-                                    <p className="text-lg text-foreground">
-                                      Você votou no modelo <span className="font-bold text-primary">{selectedOutput.modelName}</span>
-                                    </p>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                      {selectedOutput.modelId}
-                                    </p>
-                                  </div>
-                                )}
                               </div>}
                           </div>;
                 })}
