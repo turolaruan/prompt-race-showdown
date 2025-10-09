@@ -383,8 +383,8 @@ const ArenaInterface = () => {
                                   const outputId = typeof item?.id === "string" ? item.id : `output${outputIndex + 1}`;
                                   const outputLetter = String.fromCharCode(65 + outputIndex);
                                   const outputDetails = outputsById[outputId];
-                                  const title = hasVoted ? outputDetails?.modelName ?? `Modelo ${outputLetter}` : `Resposta ${outputLetter}`;
-                                  const subtitle = hasVoted ? outputDetails?.modelId ?? "Modelo não identificado" : `Modelo ${outputLetter}`;
+                                  const title = `Modelo ${outputLetter}`;
+                                  const subtitle = hasVoted ? outputDetails?.modelId ?? "Modelo não identificado" : "";
                                   const isWinner = hasVoted && votedFor === outputId;
                                   const isRunnerUp = hasVoted && votedFor !== outputId;
                                   const durationMs = typeof item?.responseTimeMs === "number" ? item.responseTimeMs : response.responseTime;
