@@ -14,7 +14,117 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      arena_responses: {
+        Row: {
+          created_at: string | null
+          id: string
+          model_id: string
+          prompt: string
+          response: string
+          response_time: number | null
+          tokens_used: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          model_id: string
+          prompt: string
+          response: string
+          response_time?: number | null
+          tokens_used?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          model_id?: string
+          prompt?: string
+          response?: string
+          response_time?: number | null
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
+      arena_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          model_a_id: string
+          model_b_id: string
+          prompt: string
+          winner_model_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          model_a_id: string
+          model_b_id: string
+          prompt: string
+          winner_model_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          model_a_id?: string
+          model_b_id?: string
+          prompt?: string
+          winner_model_id?: string | null
+        }
+        Relationships: []
+      }
+      leaderboard_results: {
+        Row: {
+          created_at: string | null
+          id: string
+          model_name: string
+          rank: number | null
+          score: number
+          task: string
+          technique: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          model_name: string
+          rank?: number | null
+          score: number
+          task: string
+          technique: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          model_name?: string
+          rank?: number | null
+          score?: number
+          task?: string
+          technique?: string
+        }
+        Relationships: []
+      }
+      models: {
+        Row: {
+          created_at: string | null
+          id: string
+          model_id: string
+          model_name: string
+          provider: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          model_id: string
+          model_name: string
+          provider?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          model_id?: string
+          model_name?: string
+          provider?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
