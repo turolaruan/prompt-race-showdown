@@ -71,6 +71,36 @@ export type Database = {
         }
         Relationships: []
       }
+      benchmarks: {
+        Row: {
+          created_at: string | null
+          dataset: string | null
+          id: string
+          metric: string
+          model_name: string
+          score: number
+          task_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          dataset?: string | null
+          id?: string
+          metric: string
+          model_name: string
+          score: number
+          task_type: string
+        }
+        Update: {
+          created_at?: string | null
+          dataset?: string | null
+          id?: string
+          metric?: string
+          model_name?: string
+          score?: number
+          task_type?: string
+        }
+        Relationships: []
+      }
       leaderboard_results: {
         Row: {
           created_at: string | null

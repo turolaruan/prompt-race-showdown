@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Database, FileJson } from "lucide-react";
+import { Upload, Database, Trash2, MessageSquare, Vote, TrendingUp, BarChart } from "lucide-react";
 
 const Admin = () => {
   const [uploading, setUploading] = useState(false);
@@ -88,6 +88,24 @@ const Admin = () => {
           title: "Leaderboard carregado!",
           description: `${results.length} resultado(s) adicionado(s) ao banco.`,
         });
+      } else if (type === "benchmarks") {
+        // Upload benchmarks data
+        const benchmarks = Array.isArray(data) ? data : [data];
+        const { error } = await supabase.from("benchmarks").insert(
+          benchmarks.map((benchmark: any) => ({
+            model_name: benchmark.model_name,
+            task_type: benchmark.task_type,
+            score: benchmark.score,
+            metric: benchmark.metric,
+            dataset: benchmark.dataset,
+          }))
+        );
+
+        if (error) throw error;
+        toast({
+          title: "Benchmarks carregados!",
+          description: `${benchmarks.length} benchmark(s) adicionado(s) ao banco.`,
+        });
       }
     } catch (error: any) {
       console.error("Error uploading file:", error);
@@ -124,198 +142,288 @@ const Admin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">Painel de Administração</h1>
-          <p className="text-muted-foreground">Upload de dados para o banco de dados</p>
-        </div>
-
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8 text-foreground">Admin Panel</h1>
+        
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Models Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileJson className="w-5 h-5" />
+                <Database className="h-5 w-5" />
                 Modelos
               </CardTitle>
-              <CardDescription>
-                Upload do JSON com a lista de modelos
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <label htmlFor="models-upload">
-                <Button asChild disabled={uploading} className="w-full cursor-pointer">
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Carregando..." : "Upload Modelos"}
-                  </span>
-                </Button>
-                <input
-                  id="models-upload"
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e, "models")}
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => handleFileUpload(e, "models")}
+                    className="hidden"
+                    id="models-upload"
+                  />
+                  <Button 
+                    onClick={() => document.getElementById("models-upload")?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON (Modelos)
+                  </Button>
+                </label>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => clearTable("models")}
                   disabled={uploading}
-                />
-              </label>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={() => clearTable("models")}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Limpar Tabela
-              </Button>
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </div>
+              
+              <div className="bg-muted p-3 rounded text-sm">
+                <p className="font-semibold mb-2">Formato esperado:</p>
+                <pre className="text-xs overflow-x-auto">
+{`[
+  {
+    "model_id": "gpt-4",
+    "model_name": "GPT-4",
+    "provider": "OpenAI"
+  }
+]`}
+                </pre>
+              </div>
             </CardContent>
           </Card>
 
+          {/* Arena Responses Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileJson className="w-5 h-5" />
-                Respostas do Arena
+                <MessageSquare className="h-5 w-5" />
+                Respostas Arena
               </CardTitle>
-              <CardDescription>
-                Upload do JSON com respostas dos modelos
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <label htmlFor="responses-upload">
-                <Button asChild disabled={uploading} className="w-full cursor-pointer">
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Carregando..." : "Upload Respostas"}
-                  </span>
-                </Button>
-                <input
-                  id="responses-upload"
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e, "arena_responses")}
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => handleFileUpload(e, "responses")}
+                    className="hidden"
+                    id="responses-upload"
+                  />
+                  <Button 
+                    onClick={() => document.getElementById("responses-upload")?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON (Respostas)
+                  </Button>
+                </label>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => clearTable("arena_responses")}
                   disabled={uploading}
-                />
-              </label>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={() => clearTable("arena_responses")}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Limpar Tabela
-              </Button>
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </div>
+              
+              <div className="bg-muted p-3 rounded text-sm">
+                <p className="font-semibold mb-2">Formato esperado:</p>
+                <pre className="text-xs overflow-x-auto">
+{`[
+  {
+    "model_id": "gpt-4",
+    "prompt": "texto",
+    "response": "resposta",
+    "response_time": 1.5,
+    "tokens_used": 100
+  }
+]`}
+                </pre>
+              </div>
             </CardContent>
           </Card>
 
+          {/* Arena Votes Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileJson className="w-5 h-5" />
-                Votos do Arena
+                <Vote className="h-5 w-5" />
+                Votos Arena
               </CardTitle>
-              <CardDescription>
-                Upload do JSON com votos dos usuários
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <label htmlFor="votes-upload">
-                <Button asChild disabled={uploading} className="w-full cursor-pointer">
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Carregando..." : "Upload Votos"}
-                  </span>
-                </Button>
-                <input
-                  id="votes-upload"
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e, "arena_votes")}
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => handleFileUpload(e, "votes")}
+                    className="hidden"
+                    id="votes-upload"
+                  />
+                  <Button 
+                    onClick={() => document.getElementById("votes-upload")?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON (Votos)
+                  </Button>
+                </label>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => clearTable("arena_votes")}
                   disabled={uploading}
-                />
-              </label>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={() => clearTable("arena_votes")}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Limpar Tabela
-              </Button>
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </div>
+              
+              <div className="bg-muted p-3 rounded text-sm">
+                <p className="font-semibold mb-2">Formato esperado:</p>
+                <pre className="text-xs overflow-x-auto">
+{`[
+  {
+    "prompt": "texto",
+    "model_a_id": "gpt-4",
+    "model_b_id": "claude-3",
+    "winner_model_id": "gpt-4"
+  }
+]`}
+                </pre>
+              </div>
             </CardContent>
           </Card>
 
+          {/* Leaderboard Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileJson className="w-5 h-5" />
-                Leaderboard
+                <TrendingUp className="h-5 w-5" />
+                Leaderboard (Votos)
               </CardTitle>
-              <CardDescription>
-                Upload do JSON com resultados do leaderboard
-              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <label htmlFor="leaderboard-upload">
-                <Button asChild disabled={uploading} className="w-full cursor-pointer">
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    {uploading ? "Carregando..." : "Upload Leaderboard"}
-                  </span>
-                </Button>
-                <input
-                  id="leaderboard-upload"
-                  type="file"
-                  accept=".json"
-                  className="hidden"
-                  onChange={(e) => handleFileUpload(e, "leaderboard")}
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => handleFileUpload(e, "leaderboard")}
+                    className="hidden"
+                    id="leaderboard-upload"
+                  />
+                  <Button 
+                    onClick={() => document.getElementById("leaderboard-upload")?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON (Leaderboard)
+                  </Button>
+                </label>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => clearTable("leaderboard_results")}
                   disabled={uploading}
-                />
-              </label>
-              <Button 
-                variant="destructive" 
-                className="w-full" 
-                onClick={() => clearTable("leaderboard_results")}
-              >
-                <Database className="w-4 h-4 mr-2" />
-                Limpar Tabela
-              </Button>
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </div>
+              
+              <div className="bg-muted p-3 rounded text-sm">
+                <p className="font-semibold mb-2">Formato esperado:</p>
+                <pre className="text-xs overflow-x-auto">
+{`[
+  {
+    "model_name": "GPT-4",
+    "task": "Resumo",
+    "technique": "Few-shot",
+    "score": 95.5,
+    "rank": 1
+  }
+]`}
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Benchmarks Card */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart className="h-5 w-5" />
+                Benchmarks dos Modelos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => handleFileUpload(e, "benchmarks")}
+                    className="hidden"
+                    id="benchmarks-upload"
+                  />
+                  <Button 
+                    onClick={() => document.getElementById("benchmarks-upload")?.click()}
+                    disabled={uploading}
+                    className="w-full"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload JSON (Benchmarks)
+                  </Button>
+                </label>
+                
+                <Button
+                  variant="destructive"
+                  onClick={() => clearTable("benchmarks")}
+                  disabled={uploading}
+                  className="w-full"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Tabela
+                </Button>
+              </div>
+              
+              <div className="bg-muted p-3 rounded text-sm">
+                <p className="font-semibold mb-2">Formato esperado:</p>
+                <pre className="text-xs overflow-x-auto">
+{`[
+  {
+    "model_name": "GPT-4",
+    "task_type": "text-generation",
+    "score": 92.5,
+    "metric": "accuracy",
+    "dataset": "MMLU"
+  }
+]`}
+                </pre>
+              </div>
             </CardContent>
           </Card>
         </div>
-
-        <Card className="bg-muted/50">
-          <CardHeader>
-            <CardTitle>Formato dos JSONs</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div>
-              <p className="font-semibold mb-1">Modelos:</p>
-              <code className="block bg-background p-2 rounded">
-                {`[{"model_id": "gpt-4", "model_name": "GPT-4", "provider": "OpenAI"}]`}
-              </code>
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Respostas:</p>
-              <code className="block bg-background p-2 rounded">
-                {`[{"prompt": "...", "model_id": "gpt-4", "response": "...", "response_time": 1.5, "tokens_used": 100}]`}
-              </code>
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Votos:</p>
-              <code className="block bg-background p-2 rounded">
-                {`[{"prompt": "...", "model_a_id": "gpt-4", "model_b_id": "claude", "winner_model_id": "gpt-4"}]`}
-              </code>
-            </div>
-            <div>
-              <p className="font-semibold mb-1">Leaderboard:</p>
-              <code className="block bg-background p-2 rounded">
-                {`[{"model_name": "GPT-4", "technique": "RAG", "task": "QA", "score": 95.5, "rank": 1}]`}
-              </code>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

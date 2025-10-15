@@ -265,10 +265,19 @@ const ArenaInterface = () => {
           <Button 
             onClick={() => setCurrentView("leaderboard")} 
             variant={currentView === "leaderboard" ? "default" : "outline"}
-            className="w-full justify-start gap-2 mb-6"
+            className="w-full justify-start gap-2 mb-2"
           >
             <TrendingUp size={16} />
             Leaderboard
+          </Button>
+
+          <Button 
+            onClick={() => window.location.href = "/dashboard"} 
+            variant="outline"
+            className="w-full justify-start gap-2 mb-6"
+          >
+            <Trophy size={16} />
+            Dashboard
           </Button>
           
           {/* Chat History */}
