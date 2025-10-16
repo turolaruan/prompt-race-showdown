@@ -51,7 +51,6 @@ export type Database = {
           model_a_id: string
           model_b_id: string
           prompt: string
-          technique: string | null
           winner_model_id: string | null
         }
         Insert: {
@@ -60,7 +59,6 @@ export type Database = {
           model_a_id: string
           model_b_id: string
           prompt: string
-          technique?: string | null
           winner_model_id?: string | null
         }
         Update: {
@@ -69,7 +67,6 @@ export type Database = {
           model_a_id?: string
           model_b_id?: string
           prompt?: string
-          technique?: string | null
           winner_model_id?: string | null
         }
         Relationships: []
@@ -112,7 +109,6 @@ export type Database = {
           rank: number | null
           score: number
           task: string
-          task_name: string | null
           technique: string
         }
         Insert: {
@@ -122,7 +118,6 @@ export type Database = {
           rank?: number | null
           score: number
           task: string
-          task_name?: string | null
           technique: string
         }
         Update: {
@@ -132,7 +127,6 @@ export type Database = {
           rank?: number | null
           score?: number
           task?: string
-          task_name?: string | null
           technique?: string
         }
         Relationships: []
