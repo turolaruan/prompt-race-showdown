@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Trophy } from "lucide-react";
+import { Trophy, Database, TestTube } from "lucide-react";
 
 interface LeaderboardEntry {
   rank: number;
@@ -26,15 +26,24 @@ const Leaderboard = () => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>(mockLeaderboardData);
   const [isLoading, setIsLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
+  const [forceMode, setForceMode] = useState<'auto' | 'mock' | 'real'>('auto');
 
   useEffect(() => {
     loadLeaderboardData();
-  }, []);
+  }, [forceMode]);
 
   const loadLeaderboardData = async () => {
     try {
       setIsLoading(true);
       
+      // Se forçar modo mock, usar dados mock
+      if (forceMode === 'mock') {
+        setLeaderboardData(mockLeaderboardData);
+        setUseMock(true);
+        setIsLoading(false);
+        return;
+      }
+
       // Tentar buscar dados reais do Supabase
       const { data: benchmarks, error } = await supabase
         .from("benchmarks")
@@ -54,21 +63,46 @@ const Leaderboard = () => {
         setLeaderboardData(processedData);
         setUseMock(false);
       } else {
-        // Usar dados mock se não houver dados reais
-        setLeaderboardData(mockLeaderboardData);
-        setUseMock(true);
+        // Usar dados mock se não houver dados reais (apenas em modo auto)
+        if (forceMode === 'auto') {
+          setLeaderboardData(mockLeaderboardData);
+          setUseMock(true);
+        } else {
+          setLeaderboardData([]);
+          setUseMock(false);
+        }
       }
     } catch (error) {
       console.error("Error loading leaderboard data:", error);
-      // Em caso de erro, usar dados mock
-      setLeaderboardData(mockLeaderboardData);
-      setUseMock(true);
-      toast({
-        title: "Usando dados de exemplo",
-        description: "Não foi possível carregar dados do servidor. Mostrando dados de exemplo.",
-      });
+      
+      // Em caso de erro no modo real, mostrar erro
+      if (forceMode === 'real') {
+        setLeaderboardData([]);
+        setUseMock(false);
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível conectar à API.",
+          variant: "destructive",
+        });
+      } else {
+        // Em modo auto, usar dados mock
+        setLeaderboardData(mockLeaderboardData);
+        setUseMock(true);
+        toast({
+          title: "Usando dados de exemplo",
+          description: "Não foi possível carregar dados do servidor. Mostrando dados de exemplo.",
+        });
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const toggleDataSource = () => {
+    if (forceMode === 'auto' || forceMode === 'real') {
+      setForceMode('mock');
+    } else {
+      setForceMode('real');
     }
   };
 
@@ -86,9 +120,28 @@ const Leaderboard = () => {
               Ranking dos melhores modelos de IA baseado em benchmarks
             </p>
           </div>
-          {useMock && (
-            <Badge variant="secondary">Dados de Exemplo</Badge>
-          )}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={toggleDataSource}
+              variant="outline"
+              className="gap-2"
+            >
+              {forceMode === 'mock' ? (
+                <>
+                  <TestTube className="h-4 w-4" />
+                  Modo Mock
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4" />
+                  Modo API
+                </>
+              )}
+            </Button>
+            {useMock && forceMode === 'auto' && (
+              <Badge variant="secondary">Dados de Exemplo</Badge>
+            )}
+          </div>
         </div>
       </div>
 
