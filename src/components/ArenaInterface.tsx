@@ -1,14 +1,15 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { Loader2, Send, Trophy, Timer, ThumbsUp, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
-import Leaderboard from "./Leaderboard";
+import { supabase } from "@/integrations/supabase/client";
+import AppSidebar from "./AppSidebar";
 interface ModelResponse {
   modelId: string;
   response: string;
@@ -41,7 +42,7 @@ const getModelDisplayName = (modelId: string): string => {
   return cleanId;
 };
 const ArenaInterface = () => {
-  const [currentView, setCurrentView] = useState<"chat" | "leaderboard">("chat");
+  const navigate = useNavigate();
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
@@ -217,12 +218,35 @@ const ArenaInterface = () => {
       setIsRunning(false);
     }
   };
-  const handleVote = (outputId: string) => {
+  const handleVote = async (outputId: string) => {
     if (hasVoted) return;
     const selectedOutput = outputsById[outputId];
     const selectedModelName = selectedOutput?.modelName ?? outputId;
+    const selectedModelId = selectedOutput?.modelId ?? outputId;
+    
     setVotedFor(outputId);
     setHasVoted(true);
+    
+    // Salvar voto no banco de dados
+    try {
+      const currentChat = chatHistory.find(c => c.id === currentChatId);
+      const allOutputIds = Object.keys(outputsById);
+      const otherOutputId = allOutputIds.find(id => id !== outputId);
+      const otherModelId = otherOutputId ? outputsById[otherOutputId]?.modelId : null;
+      
+      await supabase
+        .from("arena_votes")
+        .insert({
+          model_a_id: allOutputIds[0] ? outputsById[allOutputIds[0]]?.modelId : "unknown",
+          model_b_id: allOutputIds[1] ? outputsById[allOutputIds[1]]?.modelId : "unknown",
+          winner_model_id: selectedModelId,
+          prompt: currentChat?.prompt || "",
+          technique: "Base Model" // Você pode adicionar lógica para detectar a técnica
+        });
+    } catch (error) {
+      console.error("Error saving vote:", error);
+    }
+    
     if (currentChatId) {
       setChatHistory(prev => prev.map(chat => chat.id === currentChatId ? {
         ...chat,
@@ -235,13 +259,22 @@ const ArenaInterface = () => {
     });
   };
   const startNewChat = () => {
-    setCurrentView("chat");
     setPrompt("");
     setFastestResponses([]);
     setCurrentChatId(null);
     setHasVoted(false);
     setVotedFor(null);
     setOutputs([]);
+  };
+  
+  const handleNavigate = (view: "chat" | "leaderboard" | "dashboard") => {
+    if (view === "leaderboard") {
+      navigate("/leaderboard");
+    } else if (view === "dashboard") {
+      navigate("/dashboard");
+    } else {
+      navigate("/");
+    }
   };
   const loadChatFromHistory = (chat: ChatHistory) => {
     setPrompt(chat.prompt);
@@ -250,69 +283,17 @@ const ArenaInterface = () => {
   };
   return <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col max-h-screen overflow-hidden">
-        <div className="p-4 overflow-y-auto">
-          <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
-            <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
-            GB-CS-RT
-          </div>
-          
-          <Button onClick={startNewChat} className="w-full justify-start gap-2 mb-4 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground">
-            <MessageSquare size={16} />
-            Novo Chat
-          </Button>
-
-          <Button 
-            onClick={() => setCurrentView("leaderboard")} 
-            variant={currentView === "leaderboard" ? "default" : "outline"}
-            className="w-full justify-start gap-2 mb-2"
-          >
-            <TrendingUp size={16} />
-            Leaderboard
-          </Button>
-
-          <Button 
-            onClick={() => window.location.href = "/dashboard"} 
-            variant="outline"
-            className="w-full justify-start gap-2 mb-6"
-          >
-            <Trophy size={16} />
-            Dashboard
-          </Button>
-          
-          {/* Chat History */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-sidebar-foreground mb-3">Histórico</h3>
-            <div className="space-y-1 max-h-96 overflow-y-auto">
-              {chatHistory.map(chat => <button key={chat.id} onClick={() => loadChatFromHistory(chat)} className="w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group">
-                  <div className="text-sm text-sidebar-foreground truncate mb-1">
-                    {chat.prompt}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {chat.timestamp.toLocaleDateString()}
-                    </span>
-                    {chat.winner && <span className="flex items-center gap-1 text-winner">
-                        <Trophy size={12} />
-                        {chat.winner}
-                      </span>}
-                  </div>
-                </button>)}
-              {chatHistory.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum chat realizado ainda
-                </p>}
-            </div>
-          </div>
-        </div>
-      </div>
+      <AppSidebar
+        currentView="chat"
+        onNavigate={handleNavigate}
+        onNewChat={startNewChat}
+        chatHistory={chatHistory}
+        onLoadChat={loadChatFromHistory}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {currentView === "leaderboard" ? (
-          <Leaderboard />
-        ) : (
-          <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col">
             {/* Toggle Mock/Real Mode */}
             <div className="border-b border-border bg-muted/30 px-8 py-4">
               <div className="flex items-center gap-3">
@@ -491,8 +472,7 @@ const ArenaInterface = () => {
               </div>
             </div>
           </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>;
 };
