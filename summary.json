@@ -1,0 +1,20 @@
+{
+  "total": 100,
+  "correct": 58,
+  "accuracy_percent": 58.0,
+  "by_answer_type": {
+    "mcq": {
+      "correct": 58,
+      "total": 100,
+      "acc": 57.99999999999999
+    }
+  },
+  "model": "/home/baggio/tcc-llm/models/outputs/grpo/gemma-3-4b-it/aqua_rat/merged_fp16",
+  "val_json": "/home/baggio/tcc-llm/data/tasks/aqua_rat/val.json",
+  "mode": "concise_cot",
+  "generated_max_new_tokens": 512,
+  "stop_on_answer": false,
+  "out_dir": "/home/baggio/tcc-llm/models/outputs/grpo/gemma-3-4b-it/aqua_rat/eval/aqua_rat",
+  "runtime_seconds": 2002.94,
+  "avg_seconds_per_example": 20.029
+}
