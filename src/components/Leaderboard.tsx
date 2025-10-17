@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Trophy, Database, TestTube } from "lucide-react";
@@ -9,17 +10,18 @@ import { Trophy, Database, TestTube } from "lucide-react";
 interface LeaderboardEntry {
   rank: number;
   model: string;
-  score: number;
+  votes: number;
+  technique: string;
   task: string;
 }
 
 // Dados mock para fallback
 const mockLeaderboardData: LeaderboardEntry[] = [
-  { rank: 1, model: "GPT-4", score: 95.2, task: "Text Generation" },
-  { rank: 2, model: "Claude 3", score: 93.8, task: "Text Generation" },
-  { rank: 3, model: "Gemini Pro", score: 91.5, task: "Text Generation" },
-  { rank: 4, model: "LLaMA 3", score: 89.3, task: "Text Generation" },
-  { rank: 5, model: "Mistral", score: 87.1, task: "Text Generation" },
+  { rank: 1, model: "GPT-5", votes: 150, technique: "Modelo base", task: "Geração de Texto" },
+  { rank: 2, model: "Gemini Pro", votes: 120, technique: "Lora/QLora", task: "Tradução" },
+  { rank: 3, model: "Claude 3", votes: 95, technique: "GRPO", task: "Análise" },
+  { rank: 4, model: "LLaMA 3", votes: 80, technique: "Lora+GRPO", task: "Resumo" },
+  { rank: 5, model: "Mistral", votes: 65, technique: "Modelo base", task: "Criação" },
 ];
 
 const Leaderboard = () => {
@@ -27,10 +29,26 @@ const Leaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
   const [forceMode, setForceMode] = useState<'auto' | 'mock' | 'real'>('auto');
+  const [filterModel, setFilterModel] = useState<string>("all");
+  const [filterTechnique, setFilterTechnique] = useState<string>("all");
+  const [filterTask, setFilterTask] = useState<string>("all");
 
   useEffect(() => {
     loadLeaderboardData();
   }, [forceMode]);
+
+  // Get unique values for filters
+  const uniqueModels = Array.from(new Set(leaderboardData.map(entry => entry.model)));
+  const uniqueTechniques = Array.from(new Set(leaderboardData.map(entry => entry.technique)));
+  const uniqueTasks = Array.from(new Set(leaderboardData.map(entry => entry.task)));
+
+  // Filter data
+  const filteredData = leaderboardData.filter(entry => {
+    if (filterModel !== "all" && entry.model !== filterModel) return false;
+    if (filterTechnique !== "all" && entry.technique !== filterTechnique) return false;
+    if (filterTask !== "all" && entry.task !== filterTask) return false;
+    return true;
+  });
 
   const loadLeaderboardData = async () => {
     try {
@@ -44,22 +62,38 @@ const Leaderboard = () => {
         return;
       }
 
-      // Tentar buscar dados reais do Supabase
-      const { data: benchmarks, error } = await supabase
-        .from("benchmarks")
-        .select("*")
-        .order("score", { ascending: false });
+      // Tentar buscar dados reais do Supabase (votos da arena)
+      const { data: votes, error } = await supabase
+        .from("arena_votes")
+        .select("*");
 
       if (error) throw error;
 
-      if (benchmarks && benchmarks.length > 0) {
-        // Processar dados reais
-        const processedData: LeaderboardEntry[] = benchmarks.map((benchmark, index) => ({
-          rank: index + 1,
-          model: benchmark.model_name,
-          score: Number(benchmark.score),
-          task: benchmark.task_type,
-        }));
+      if (votes && votes.length > 0) {
+        // Agregar votos por modelo
+        const votesByModel = votes.reduce((acc: Record<string, { votes: number; techniques: Set<string>; tasks: Set<string> }>, vote) => {
+          const model = vote.winner_model_id || "Desconhecido";
+          if (!acc[model]) {
+            acc[model] = { votes: 0, techniques: new Set(), tasks: new Set() };
+          }
+          acc[model].votes += 1;
+          if (vote.technique) acc[model].techniques.add(vote.technique);
+          if (vote.task) acc[model].tasks.add(vote.task);
+          return acc;
+        }, {});
+
+        // Converter para array e ordenar por votos
+        const processedData: LeaderboardEntry[] = Object.entries(votesByModel)
+          .map(([model, data]) => ({
+            rank: 0, // Will be set after sorting
+            model,
+            votes: data.votes,
+            technique: Array.from(data.techniques).join(", ") || "Não especificada",
+            task: Array.from(data.tasks).join(", ") || "Não especificada",
+          }))
+          .sort((a, b) => b.votes - a.votes)
+          .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
         setLeaderboardData(processedData);
         setUseMock(false);
       } else {
@@ -117,7 +151,7 @@ const Leaderboard = () => {
               <h1 className="text-5xl font-bold text-foreground">Leaderboard</h1>
             </div>
             <p className="text-muted-foreground">
-              Ranking dos melhores modelos de IA baseado em benchmarks
+              Ranking dos modelos baseado nos votos dos usuários
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -145,6 +179,45 @@ const Leaderboard = () => {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Select value={filterModel} onValueChange={setFilterModel}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filtrar por Modelo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os Modelos</SelectItem>
+            {uniqueModels.map(model => (
+              <SelectItem key={model} value={model}>{model}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterTechnique} onValueChange={setFilterTechnique}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filtrar por Técnica" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Técnicas</SelectItem>
+            {uniqueTechniques.map(technique => (
+              <SelectItem key={technique} value={technique}>{technique}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={filterTask} onValueChange={setFilterTask}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filtrar por Tarefa" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as Tarefas</SelectItem>
+            {uniqueTasks.map(task => (
+              <SelectItem key={task} value={task}>{task}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Main Table */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         {isLoading ? (
@@ -158,29 +231,23 @@ const Leaderboard = () => {
               <TableRow>
                 <TableHead className="w-24">Rank</TableHead>
                 <TableHead>Modelo</TableHead>
+                <TableHead>Técnica</TableHead>
                 <TableHead>Tarefa</TableHead>
-                <TableHead>Score</TableHead>
+                <TableHead>Votos</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leaderboardData.map((entry, index) => (
+              {filteredData.map((entry, index) => (
                 <TableRow key={`${entry.model}-${index}`}>
                   <TableCell className="font-semibold text-lg">
                     {entry.rank === 1 && <Trophy className="inline h-5 w-5 text-yellow-500 mr-2" />}
                     {entry.rank}º
                   </TableCell>
                   <TableCell className="text-base font-medium">{entry.model}</TableCell>
+                  <TableCell className="text-base">{entry.technique}</TableCell>
                   <TableCell className="text-base">{entry.task}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-muted rounded-full h-2 overflow-hidden max-w-[200px]">
-                        <div 
-                          className="bg-primary h-full transition-all duration-500"
-                          style={{ width: `${entry.score}%` }}
-                        />
-                      </div>
-                      <Badge variant="default">{entry.score.toFixed(1)}</Badge>
-                    </div>
+                    <Badge variant="default">{entry.votes}</Badge>
                   </TableCell>
                 </TableRow>
               ))}

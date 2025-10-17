@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { BarChart3, Trophy, TrendingUp } from "lucide-react";
+import { BarChart3, Trophy, TrendingUp, Download } from "lucide-react";
+import AppSidebar from "@/components/AppSidebar";
 
 interface BenchmarkData {
   id: string;
@@ -22,6 +24,15 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<string>("all");
   const [selectedModel, setSelectedModel] = useState<string>("all");
+  
+  // Export states
+  const [selectedExportModels, setSelectedExportModels] = useState<string[]>([]);
+  const [selectedExportTasks, setSelectedExportTasks] = useState<string[]>([]);
+  const [selectedExportTechniques, setSelectedExportTechniques] = useState<string[]>([]);
+
+  const availableModels = ["GPT-4", "Claude 3", "Gemini Pro", "LLaMA 3", "Mistral"];
+  const availableTasks = ["Resumo", "Tradução", "Análise", "Criação", "Resposta"];
+  const availableTechniques = ["Modelo base", "Lora/QLora", "GRPO", "Lora+GRPO"];
 
   useEffect(() => {
     loadBenchmarks();
@@ -67,8 +78,34 @@ const Dashboard = () => {
     ? (filteredBenchmarks.reduce((sum, b) => sum + b.score, 0) / filteredBenchmarks.length).toFixed(2)
     : "0";
 
+  const toggleSelection = (item: string, list: string[], setList: (list: string[]) => void) => {
+    if (list.includes(item)) {
+      setList(list.filter(i => i !== item));
+    } else {
+      setList([...list, item]);
+    }
+  };
+
+  const handleExport = () => {
+    if (selectedExportModels.length === 0 || selectedExportTasks.length === 0 || selectedExportTechniques.length === 0) {
+      toast({
+        title: "Seleção incompleta",
+        description: "Por favor, selecione pelo menos um modelo, uma tarefa e uma técnica.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Exportando modelo",
+      description: `Exportando ${selectedExportModels.length} modelo(s) com ${selectedExportTechniques.length} técnica(s) para ${selectedExportTasks.length} tarefa(s).`
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-background p-8">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar />
+      <div className="flex-1 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -139,6 +176,72 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Model Export Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Exportação de Modelo</CardTitle>
+            <p className="text-sm text-muted-foreground">Selecione um modelo para exportar:</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Models */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Modelos:</h3>
+              <div className="flex flex-wrap gap-2">
+                {availableModels.map(model => (
+                  <Badge
+                    key={model}
+                    variant={selectedExportModels.includes(model) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleSelection(model, selectedExportModels, setSelectedExportModels)}
+                  >
+                    {model}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Tasks */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Tarefa:</h3>
+              <div className="flex flex-wrap gap-2">
+                {availableTasks.map(task => (
+                  <Badge
+                    key={task}
+                    variant={selectedExportTasks.includes(task) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleSelection(task, selectedExportTasks, setSelectedExportTasks)}
+                  >
+                    {task}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Techniques */}
+            <div>
+              <h3 className="text-sm font-medium mb-3">Técnica:</h3>
+              <div className="flex flex-wrap gap-2">
+                {availableTechniques.map(technique => (
+                  <Badge
+                    key={technique}
+                    variant={selectedExportTechniques.includes(technique) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleSelection(technique, selectedExportTechniques, setSelectedExportTechniques)}
+                  >
+                    {technique}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Export Button */}
+            <Button onClick={handleExport} className="w-full gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
@@ -218,6 +321,7 @@ const Dashboard = () => {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock, TrendingUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
 import Leaderboard from "./Leaderboard";
 interface ModelResponse {
@@ -217,18 +218,48 @@ const ArenaInterface = () => {
       setIsRunning(false);
     }
   };
-  const handleVote = (outputId: string) => {
+  const handleVote = async (outputId: string) => {
     if (hasVoted) return;
     const selectedOutput = outputsById[outputId];
     const selectedModelName = selectedOutput?.modelName ?? outputId;
+    const selectedModelId = selectedOutput?.modelId ?? outputId;
+    
     setVotedFor(outputId);
     setHasVoted(true);
+
+    // Save vote to database
+    const currentChat = chatHistory.find(c => c.id === currentChatId);
+    const allOutputs = Object.values(outputsById);
+    
+    try {
+      const { error } = await supabase.from("arena_votes").insert({
+        winner_model_id: selectedModelId,
+        prompt: currentChat?.prompt || "",
+        model_a_id: allOutputs[0]?.modelId || "",
+        model_b_id: allOutputs[1]?.modelId || "",
+        technique: "Modelo base", // Default technique - can be enhanced later
+        task: "Geração de Texto" // Default task - can be enhanced later
+      });
+
+      if (error) {
+        console.error("Error saving vote:", error);
+        toast({
+          title: "Erro ao salvar voto",
+          description: "O voto foi registrado localmente, mas não foi salvo no banco de dados.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error saving vote:", error);
+    }
+
     if (currentChatId) {
       setChatHistory(prev => prev.map(chat => chat.id === currentChatId ? {
         ...chat,
         winner: selectedModelName
       } : chat));
     }
+    
     toast({
       title: "Voto Registrado!",
       description: selectedOutput ? `Você votou na resposta gerada pelo modelo ${selectedModelName}.` : "Voto registrado."
