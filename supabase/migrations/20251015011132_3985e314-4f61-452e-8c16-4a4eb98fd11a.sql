@@ -22,3 +22,21 @@ USING (true);
 CREATE INDEX idx_benchmarks_model ON public.benchmarks(model_name);
 CREATE INDEX idx_benchmarks_task ON public.benchmarks(task_type);
 CREATE INDEX idx_benchmarks_created ON public.benchmarks(created_at DESC);
+
+-- Add INSERT policy for benchmarks table
+CREATE POLICY "Allow public insert for benchmarks" 
+ON public.benchmarks 
+FOR INSERT 
+WITH CHECK (true);
+
+-- Add UPDATE policy for benchmarks table (optional, for future use)
+CREATE POLICY "Allow public update for benchmarks" 
+ON public.benchmarks 
+FOR UPDATE 
+USING (true);
+
+-- Add DELETE policy for benchmarks table (optional, for future use)
+CREATE POLICY "Allow public delete for benchmarks" 
+ON public.benchmarks 
+FOR DELETE 
+USING (true);
