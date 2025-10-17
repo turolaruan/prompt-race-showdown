@@ -9,6 +9,46 @@ const Admin = () => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
+  // Helper function to extract model name from path
+  const extractModelName = (modelPath: string): string => {
+    // Extract from path like: /home/.../outputs/grpo/Llama-3.2-3B-Instruct/aqua_rat/merged_fp16
+    const parts = modelPath.split('/');
+    // Find the model name (usually after technique like grpo, lora, etc.)
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (parts[i] === 'grpo' || parts[i] === 'lora' || parts[i] === 'qlora' || parts[i] === 'outputs') {
+        const modelName = parts[i + 1];
+        if (modelName && !modelName.includes('.')) {
+          return modelName;
+        }
+      }
+    }
+    // Fallback: return the last meaningful part
+    return parts.filter(p => p && !p.includes('.')).pop() || 'Unknown Model';
+  };
+
+  // Helper function to extract task name from val_json path
+  const extractTaskName = (valJsonPath: string): string => {
+    // Extract from path like: /home/.../data/tasks/aqua_rat/val.json
+    const parts = valJsonPath.split('/');
+    const tasksIndex = parts.indexOf('tasks');
+    if (tasksIndex !== -1 && tasksIndex < parts.length - 1) {
+      return parts[tasksIndex + 1];
+    }
+    return 'Unknown Task';
+  };
+
+  // Helper function to extract technique from model path
+  const extractTechnique = (modelPath: string): string => {
+    const lowerPath = modelPath.toLowerCase();
+    if (lowerPath.includes('grpo') && (lowerPath.includes('lora') || lowerPath.includes('qlora'))) {
+      return 'Lora+GRPO';
+    }
+    if (lowerPath.includes('grpo')) return 'GRPO';
+    if (lowerPath.includes('qlora')) return 'Lora/QLora';
+    if (lowerPath.includes('lora')) return 'Lora/QLora';
+    return 'Modelo base';
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -89,16 +129,29 @@ const Admin = () => {
           description: `${results.length} resultado(s) adicionado(s) ao banco.`,
         });
       } else if (type === "benchmarks") {
-        // Upload benchmarks data
+        // Upload benchmarks data - New format support
         const benchmarks = Array.isArray(data) ? data : [data];
         const { error } = await supabase.from("benchmarks").insert(
-          benchmarks.map((benchmark: any) => ({
-            model_name: benchmark.model_name,
-            task_type: benchmark.task_type,
-            score: benchmark.score,
-            metric: benchmark.metric,
-            dataset: benchmark.dataset,
-          }))
+          benchmarks.map((benchmark: any) => {
+            // Check if it's the new format (has 'model' path and 'accuracy_percent')
+            if (benchmark.model && benchmark.accuracy_percent !== undefined) {
+              return {
+                model_name: extractModelName(benchmark.model),
+                task_type: benchmark.val_json ? extractTaskName(benchmark.val_json) : 'Unknown',
+                score: benchmark.accuracy_percent,
+                metric: 'accuracy',
+                dataset: benchmark.val_json ? extractTaskName(benchmark.val_json) : null,
+              };
+            }
+            // Old format fallback
+            return {
+              model_name: benchmark.model_name,
+              task_type: benchmark.task_type,
+              score: benchmark.score,
+              metric: benchmark.metric,
+              dataset: benchmark.dataset,
+            };
+          })
         );
 
         if (error) throw error;
@@ -410,15 +463,26 @@ const Admin = () => {
               <div className="bg-muted p-3 rounded text-sm">
                 <p className="font-semibold mb-2">Formato esperado:</p>
                 <pre className="text-xs overflow-x-auto">
-{`[
-  {
-    "model_name": "GPT-4",
-    "task_type": "text-generation",
-    "score": 92.5,
-    "metric": "accuracy",
-    "dataset": "MMLU"
-  }
-]`}
+{`{
+  "total": 100,
+  "correct": 51,
+  "accuracy_percent": 51.0,
+  "by_answer_type": {
+    "mcq": {
+      "correct": 51,
+      "total": 100,
+      "acc": 51.0
+    }
+  },
+  "model": "/path/to/model/Llama-3.2-3B-Instruct/task/merged_fp16",
+  "val_json": "/path/to/data/tasks/aqua_rat/val.json",
+  "mode": "concise_cot",
+  "generated_max_new_tokens": 512,
+  "stop_on_answer": false,
+  "out_dir": "/path/to/outputs/",
+  "runtime_seconds": 936.9,
+  "avg_seconds_per_example": 9.369
+}`}
                 </pre>
               </div>
             </CardContent>
