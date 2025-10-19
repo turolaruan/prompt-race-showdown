@@ -268,7 +268,7 @@ const Admin = () => {
                   <input
                     type="file"
                     accept=".json"
-                    onChange={(e) => handleFileUpload(e, "arena_responses")}
+                    onChange={(e) => handleFileUpload(e, "responses")}
                     className="hidden"
                     id="responses-upload"
                   />
@@ -324,7 +324,7 @@ const Admin = () => {
                   <input
                     type="file"
                     accept=".json"
-                    onChange={(e) => handleFileUpload(e, "arena_votes")}
+                    onChange={(e) => handleFileUpload(e, "votes")}
                     className="hidden"
                     id="votes-upload"
                   />
