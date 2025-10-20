@@ -10,7 +10,7 @@ const AppSidebar = () => {
   const isActive = (path: string) => currentPath === path;
 
   return (
-    <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
+    <div className="w-full lg:w-80 bg-sidebar flex flex-col border-sidebar-border border-b lg:border-b-0 lg:border-r">
       <div className="p-4">
         <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
           <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />

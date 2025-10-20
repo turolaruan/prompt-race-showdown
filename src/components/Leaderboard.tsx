@@ -141,7 +141,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col p-8">
+    <div className="flex-1 flex flex-col px-4 py-6 sm:px-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -226,33 +226,35 @@ const Leaderboard = () => {
             <span className="ml-4 text-lg text-muted-foreground">Carregando dados...</span>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-24">Rank</TableHead>
-                <TableHead>Modelo</TableHead>
-                <TableHead>Técnica</TableHead>
-                <TableHead>Tarefa</TableHead>
-                <TableHead>Votos</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.map((entry, index) => (
-                <TableRow key={`${entry.model}-${index}`}>
-                  <TableCell className="font-semibold text-lg">
-                    {entry.rank === 1 && <Trophy className="inline h-5 w-5 text-yellow-500 mr-2" />}
-                    {entry.rank}º
-                  </TableCell>
-                  <TableCell className="text-base font-medium">{entry.model}</TableCell>
-                  <TableCell className="text-base">{entry.technique}</TableCell>
-                  <TableCell className="text-base">{entry.task}</TableCell>
-                  <TableCell>
-                    <Badge variant="default">{entry.votes}</Badge>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">Rank</TableHead>
+                  <TableHead>Modelo</TableHead>
+                  <TableHead>Técnica</TableHead>
+                  <TableHead>Tarefa</TableHead>
+                  <TableHead>Votos</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredData.map((entry, index) => (
+                  <TableRow key={`${entry.model}-${index}`}>
+                    <TableCell className="font-semibold text-lg">
+                      {entry.rank === 1 && <Trophy className="inline h-5 w-5 text-yellow-500 mr-2" />}
+                      {entry.rank}º
+                    </TableCell>
+                    <TableCell className="text-base font-medium whitespace-nowrap">{entry.model}</TableCell>
+                    <TableCell className="text-base whitespace-nowrap">{entry.technique}</TableCell>
+                    <TableCell className="text-base whitespace-nowrap">{entry.task}</TableCell>
+                    <TableCell>
+                      <Badge variant="default">{entry.votes}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </div>
