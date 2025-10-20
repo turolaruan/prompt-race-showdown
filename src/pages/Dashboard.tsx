@@ -10,7 +10,6 @@ import { toast } from "@/hooks/use-toast";
 import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import { mockBenchmarks, BenchmarkDetails } from "@/lib/mockBenchmarks";
-import ChatHistoryPanel from "@/components/ChatHistoryPanel";
 import type { Database } from "@/integrations/supabase/types";
 
 type BenchmarkRow = Database["public"]["Tables"]["benchmarks"]["Row"];
@@ -166,9 +165,8 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <div className="flex flex-1">
-        <div className="flex-1 p-8">
-          <div className="max-w-6xl xl:max-w-7xl mx-auto space-y-8">
+      <div className="flex-1 p-8">
+        <div className="mx-auto max-w-6xl space-y-8 xl:max-w-7xl">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -521,11 +519,9 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
-          </div>
-        </div>
-        <ChatHistoryPanel />
       </div>
     </div>
+  </div>
   );
 };
 
