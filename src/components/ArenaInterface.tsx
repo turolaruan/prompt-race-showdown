@@ -10,17 +10,14 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
 import Leaderboard from "./Leaderboard";
+import { useChatHistory } from "@/context/ChatHistoryContext";
+import type { ChatHistoryEntry } from "@/context/ChatHistoryContext";
+
 interface ModelResponse {
   modelId: string;
   response: string;
   responseTime: number;
   isLoading: boolean;
-}
-interface ChatHistory {
-  id: string;
-  prompt: string;
-  timestamp: Date;
-  winner?: string;
 }
 interface OutputDetails {
   id: string;
@@ -42,12 +39,17 @@ const getModelDisplayName = (modelId: string): string => {
   return cleanId;
 };
 const ArenaInterface = () => {
+  const {
+    history: chatHistory,
+    currentChatId,
+    addChat,
+    updateChat,
+    setCurrentChat,
+  } = useChatHistory();
   const [currentView, setCurrentView] = useState<"chat" | "leaderboard">("chat");
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<OutputDetails[]>([]);
@@ -129,14 +131,8 @@ const ArenaInterface = () => {
     const currentPrompt = prompt.trim();
 
     // Create new chat entry
-    const chatId = Date.now().toString();
-    const newChat: ChatHistory = {
-      id: chatId,
-      prompt: currentPrompt,
-      timestamp: new Date()
-    };
-    setChatHistory(prev => [newChat, ...prev]);
-    setCurrentChatId(chatId);
+    const chatId = addChat(currentPrompt);
+
     setIsRunning(true);
     setFastestResponses([]);
     setHasVoted(false);
@@ -254,10 +250,7 @@ const ArenaInterface = () => {
     }
 
     if (currentChatId) {
-      setChatHistory(prev => prev.map(chat => chat.id === currentChatId ? {
-        ...chat,
-        winner: selectedModelName
-      } : chat));
+      updateChat(currentChatId, { winner: selectedModelName });
     }
     
     toast({
@@ -269,14 +262,14 @@ const ArenaInterface = () => {
     setCurrentView("chat");
     setPrompt("");
     setFastestResponses([]);
-    setCurrentChatId(null);
+    setCurrentChat(null);
     setHasVoted(false);
     setVotedFor(null);
     setOutputs([]);
   };
-  const loadChatFromHistory = (chat: ChatHistory) => {
+  const loadChatFromHistory = (chat: ChatHistoryEntry) => {
     setPrompt(chat.prompt);
-    setCurrentChatId(chat.id);
+    setCurrentChat(chat.id);
     // You could reload the responses here if needed
   };
   return <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden">
@@ -322,7 +315,7 @@ const ArenaInterface = () => {
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock size={12} />
-                      {chat.timestamp.toLocaleDateString()}
+                      {new Date(chat.timestamp).toLocaleDateString()}
                     </span>
                     {chat.winner && <span className="flex items-center gap-1 text-winner">
                         <Trophy size={12} />

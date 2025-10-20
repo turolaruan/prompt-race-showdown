@@ -1,30 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { BarChart3, Trophy, TrendingUp, Download } from "lucide-react";
+import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
+import { mockBenchmarks, BenchmarkDetails } from "@/lib/mockBenchmarks";
+import ChatHistoryPanel from "@/components/ChatHistoryPanel";
+import type { Database } from "@/integrations/supabase/types";
 
-interface BenchmarkData {
-  id: string;
-  model_name: string;
-  task_type: string;
-  score: number;
-  metric: string;
-  dataset: string | null;
-  created_at: string;
-}
+type BenchmarkRow = Database["public"]["Tables"]["benchmarks"]["Row"];
 
 const Dashboard = () => {
-  const [benchmarks, setBenchmarks] = useState<BenchmarkData[]>([]);
+  const isSupabaseConfigured = Boolean(
+    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+  );
+
+  const [benchmarks, setBenchmarks] = useState<BenchmarkDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<string>("all");
   const [selectedModel, setSelectedModel] = useState<string>("all");
-  
+  const [useMockData, setUseMockData] = useState<boolean>(() => !isSupabaseConfigured);
+
   // Export states
   const [selectedExportModels, setSelectedExportModels] = useState<string[]>([]);
   const [selectedExportTasks, setSelectedExportTasks] = useState<string[]>([]);
@@ -34,13 +35,27 @@ const Dashboard = () => {
   const availableTasks = ["Resumo", "Tradução", "Análise", "Criação", "Resposta"];
   const availableTechniques = ["Modelo base", "Lora/QLora", "GRPO", "Lora+GRPO"];
 
-  useEffect(() => {
-    loadBenchmarks();
-  }, []);
+  const loadBenchmarks = useCallback(async () => {
+    setIsLoading(true);
 
-  const loadBenchmarks = async () => {
+    if (useMockData) {
+      setBenchmarks(mockBenchmarks);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      toast({
+        title: "Configuração necessária",
+        description: "Defina as credenciais do Supabase para carregar os dados reais.",
+        variant: "destructive",
+      });
+      setBenchmarks([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      setIsLoading(true);
       const { data, error } = await supabase
         .from("benchmarks")
         .select("*")
@@ -48,18 +63,32 @@ const Dashboard = () => {
 
       if (error) throw error;
 
-      setBenchmarks(data || []);
+      if (!data || data.length === 0) {
+        setBenchmarks([]);
+        return;
+      }
+
+      const normalizedData: BenchmarkDetails[] = data.map((item: BenchmarkRow) => ({
+        ...item,
+      }));
+
+      setBenchmarks(normalizedData);
     } catch (error) {
       console.error("Error loading benchmarks:", error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os benchmarks.",
+        title: "Erro ao carregar benchmarks",
+        description: "Não foi possível carregar os dados do Supabase.",
         variant: "destructive",
       });
+      setBenchmarks([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [useMockData, isSupabaseConfigured]);
+
+  useEffect(() => {
+    loadBenchmarks();
+  }, [loadBenchmarks]);
 
   const filteredBenchmarks = benchmarks.filter(b => {
     if (selectedTask !== "all" && b.task_type !== selectedTask) return false;
@@ -77,6 +106,38 @@ const Dashboard = () => {
   const averageScore = filteredBenchmarks.length > 0
     ? (filteredBenchmarks.reduce((sum, b) => sum + b.score, 0) / filteredBenchmarks.length).toFixed(2)
     : "0";
+
+  const formatNumber = (value?: number | null, fractionDigits = 2) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return value.toFixed(fractionDigits);
+  };
+
+  const formatLabel = (value?: string | null, fallback = "—") => {
+    if (!value) return fallback;
+    return value
+      .split(/[_-]/)
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ");
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "—";
+    }
+    return parsed.toLocaleDateString();
+  };
+
+  const getPrimaryAnswerType = (benchmark: BenchmarkDetails) => {
+    if (!benchmark.by_answer_type) return null;
+    const [label, stats] = Object.entries(benchmark.by_answer_type)[0] ?? [];
+    if (!label || !stats) return null;
+    return { label, stats };
+  };
 
   const toggleSelection = (item: string, list: string[], setList: (list: string[]) => void) => {
     if (list.includes(item)) {
@@ -105,15 +166,28 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-background">
       <AppSidebar />
-      <div className="flex-1 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="flex flex-1">
+        <div className="flex-1 p-8">
+          <div className="max-w-6xl xl:max-w-7xl mx-auto space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard de Benchmarks</h1>
             <p className="text-muted-foreground">Análise de performance dos modelos em diferentes tarefas</p>
           </div>
-          <BarChart3 className="h-12 w-12 text-primary" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="dashboard-data-mode"
+                checked={useMockData}
+                onCheckedChange={setUseMockData}
+              />
+              <Label htmlFor="dashboard-data-mode" className="text-sm font-medium cursor-pointer">
+                {useMockData ? "Modo Mock" : "Banco de Dados"}
+              </Label>
+            </div>
+            <BarChart3 className="h-12 w-12 text-primary" />
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -167,15 +241,220 @@ const Dashboard = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-semibold text-foreground">{model.model_name}</p>
-                      <p className="text-sm text-muted-foreground">{model.task_type}</p>
+                      <p className="text-sm text-muted-foreground">{formatLabel(model.task_type)}</p>
                     </div>
-                    <Badge variant="default">{model.score.toFixed(2)}</Badge>
+                    <Badge variant="default">{formatNumber(model.score)}</Badge>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <Select value={selectedTask} onValueChange={setSelectedTask}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por tarefa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Tarefas</SelectItem>
+                {uniqueTasks.map(task => (
+                  <SelectItem key={task} value={task}>{task}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por modelo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Modelos</SelectItem>
+                {uniqueModels.map(model => (
+                  <SelectItem key={model} value={model}>{model}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Benchmarks Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Resultados de Benchmarks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredBenchmarks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>Nenhum benchmark encontrado.</p>
+                <p className="text-sm mt-2">Faça upload de dados na página Admin.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {filteredBenchmarks.map((benchmark) => {
+                  const answerType = getPrimaryAnswerType(benchmark);
+                  const scoreDisplay = formatNumber(benchmark.score);
+                  const accuracyDisplay =
+                    typeof benchmark.accuracy_percent === "number"
+                      ? formatNumber(benchmark.accuracy_percent)
+                      : scoreDisplay;
+                  const datasetLabel = formatLabel(benchmark.dataset, "Dataset indisponível");
+                  const runtimeDisplay =
+                    typeof benchmark.runtime_seconds === "number"
+                      ? `${formatNumber(benchmark.runtime_seconds, 2)} s`
+                      : "—";
+                  const avgRuntimeDisplay =
+                    typeof benchmark.avg_seconds_per_example === "number"
+                      ? `${formatNumber(benchmark.avg_seconds_per_example, 2)} s`
+                      : "—";
+                  const tokensDisplay =
+                    typeof benchmark.generated_max_new_tokens === "number"
+                      ? benchmark.generated_max_new_tokens.toString()
+                      : "—";
+                  const stopBadge = typeof benchmark.stop_on_answer === "boolean"
+                    ? benchmark.stop_on_answer
+                      ? "Pára quando responde"
+                      : "Completa saída"
+                    : null;
+
+                  return (
+                    <div
+                      key={benchmark.id}
+                      className="rounded-xl border border-border/60 bg-card/50 p-6 shadow-sm transition-shadow hover:shadow-md"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-1">
+                          <h3 className="text-xl font-semibold text-foreground">{benchmark.model_name}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {[formatLabel(benchmark.task_type), datasetLabel]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {benchmark.technique && (
+                            <Badge variant="secondary" className="text-xs uppercase tracking-wide">
+                              {benchmark.technique}
+                            </Badge>
+                          )}
+                          <Badge variant="default" className="text-lg px-3 py-1 font-semibold">
+                            {scoreDisplay !== "—" ? `${scoreDisplay}%` : "Score não disponível"}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          {formatDate(benchmark.created_at)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Timer className="h-4 w-4" />
+                          {runtimeDisplay}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Cpu className="h-4 w-4" />
+                          Tokens máx: {tokensDisplay}
+                        </span>
+                        {benchmark.mode && (
+                          <span className="flex items-center gap-1">
+                            <Activity className="h-4 w-4" />
+                            Modo: {formatLabel(benchmark.mode)}
+                          </span>
+                        )}
+                        {stopBadge && (
+                          <Badge variant="outline" className="border-dashed text-[11px]">
+                            {stopBadge}
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="mt-6 grid gap-6 md:grid-cols-2">
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
+                              <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                                <Activity className="h-3.5 w-3.5" />
+                                Accuracy
+                              </p>
+                              <p className="mt-2 text-lg font-semibold text-foreground">
+                                {accuracyDisplay !== "—" ? `${accuracyDisplay}%` : "—"}
+                              </p>
+                            </div>
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
+                              <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                                <Trophy className="h-3.5 w-3.5" />
+                                Acertos
+                              </p>
+                              <p className="mt-2 text-lg font-semibold text-foreground">
+                                {typeof benchmark.correct === "number" ? benchmark.correct : "—"}
+                                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                                  / {typeof benchmark.total === "number" ? benchmark.total : "—"}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {answerType && (
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
+                              <p className="text-xs font-medium uppercase text-muted-foreground">
+                                {formatLabel(answerType.label)} (por tipo de resposta)
+                              </p>
+                              <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+                                <div>
+                                  <p className="text-xs text-muted-foreground uppercase">Total</p>
+                                  <p className="font-semibold text-foreground">{answerType.stats.total}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground uppercase">Corretas</p>
+                                  <p className="font-semibold text-foreground">{answerType.stats.correct}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-muted-foreground uppercase">Acc</p>
+                                  <p className="font-semibold text-foreground">
+                                    {formatNumber(answerType.stats.acc)}%
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
+                              <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                                <Timer className="h-3.5 w-3.5" />
+                                Tempo total
+                              </p>
+                              <p className="mt-2 text-lg font-semibold text-foreground">{runtimeDisplay}</p>
+                            </div>
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
+                              <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                                <Timer className="h-3.5 w-3.5" />
+                                Tempo / exemplo
+                              </p>
+                              <p className="mt-2 text-lg font-semibold text-foreground">{avgRuntimeDisplay}</p>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Model Export Section */}
         <Card>
@@ -242,86 +521,9 @@ const Dashboard = () => {
             </Button>
           </CardContent>
         </Card>
-
-        {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <Select value={selectedTask} onValueChange={setSelectedTask}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por tarefa" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Tarefas</SelectItem>
-                {uniqueTasks.map(task => (
-                  <SelectItem key={task} value={task}>{task}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filtrar por modelo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Modelos</SelectItem>
-                {uniqueModels.map(model => (
-                  <SelectItem key={model} value={model}>{model}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
-
-        {/* Benchmarks Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Resultados de Benchmarks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-              </div>
-            ) : filteredBenchmarks.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Nenhum benchmark encontrado.</p>
-                <p className="text-sm mt-2">Faça upload de dados na página Admin.</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Modelo</TableHead>
-                    <TableHead>Tarefa</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Métrica</TableHead>
-                    <TableHead>Dataset</TableHead>
-                    <TableHead>Data</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredBenchmarks.map((benchmark) => (
-                    <TableRow key={benchmark.id}>
-                      <TableCell className="font-medium">{benchmark.model_name}</TableCell>
-                      <TableCell>{benchmark.task_type}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{benchmark.score.toFixed(2)}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{benchmark.metric}</TableCell>
-                      <TableCell className="text-muted-foreground">{benchmark.dataset || "N/A"}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(benchmark.created_at).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        <ChatHistoryPanel />
       </div>
     </div>
   );
