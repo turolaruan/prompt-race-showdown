@@ -272,9 +272,9 @@ const ArenaInterface = () => {
     setCurrentChat(chat.id);
     // You could reload the responses here if needed
   };
-  return <div className="flex flex-col lg:flex-row h-screen bg-background overflow-hidden">
+  return <div className="flex flex-col lg:flex-row min-h-screen lg:h-screen bg-background overflow-x-hidden lg:overflow-hidden">
       {/* Sidebar */}
-      <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col max-h-screen overflow-hidden">
+      <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col lg:max-h-screen lg:overflow-hidden">
         <div className="p-4 overflow-y-auto">
           <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
             <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
