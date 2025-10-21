@@ -33,4 +33,7 @@ ALTER TABLE public.benchmarks
 -- Drop obsolete indexes
 DROP INDEX IF EXISTS idx_benchmarks_task;
 
+-- Ensure Supabase/PostgREST reloads the updated schema
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
