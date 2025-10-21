@@ -26,29 +26,6 @@ const Admin = () => {
     return parts.filter(p => p && !p.includes('.')).pop() || 'Unknown Model';
   };
 
-  // Helper function to extract task name from val_json path
-  const extractTaskName = (valJsonPath: string): string => {
-    // Extract from path like: /home/.../data/tasks/aqua_rat/val.json
-    const parts = valJsonPath.split('/');
-    const tasksIndex = parts.indexOf('tasks');
-    if (tasksIndex !== -1 && tasksIndex < parts.length - 1) {
-      return parts[tasksIndex + 1];
-    }
-    return 'Unknown Task';
-  };
-
-  // Helper function to extract technique from model path
-  const extractTechnique = (modelPath: string): string => {
-    const lowerPath = modelPath.toLowerCase();
-    if (lowerPath.includes('grpo') && (lowerPath.includes('lora') || lowerPath.includes('qlora'))) {
-      return 'Lora+GRPO';
-    }
-    if (lowerPath.includes('grpo')) return 'GRPO';
-    if (lowerPath.includes('qlora')) return 'Lora/QLora';
-    if (lowerPath.includes('lora')) return 'Lora/QLora';
-    return 'Modelo base';
-  };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -129,30 +106,39 @@ const Admin = () => {
           description: `${results.length} resultado(s) adicionado(s) ao banco.`,
         });
       } else if (type === "benchmarks") {
-        // Upload benchmarks data - New format support
+        // Upload benchmarks data following the new payload format
         const benchmarks = Array.isArray(data) ? data : [data];
-        const { error } = await supabase.from("benchmarks").insert(
-          benchmarks.map((benchmark: any) => {
-            // Check if it's the new format (has 'model' path and 'accuracy_percent')
-            if (benchmark.model && benchmark.accuracy_percent !== undefined) {
-              return {
-                model_name: extractModelName(benchmark.model),
-                task_type: benchmark.val_json ? extractTaskName(benchmark.val_json) : 'Unknown',
-                score: benchmark.accuracy_percent,
-                metric: 'accuracy',
-                dataset: benchmark.val_json ? extractTaskName(benchmark.val_json) : null,
-              };
-            }
-            // Old format fallback
-            return {
-              model_name: benchmark.model_name,
-              task_type: benchmark.task_type,
-              score: benchmark.score,
-              metric: benchmark.metric,
-              dataset: benchmark.dataset,
-            };
-          })
-        );
+
+        const formattedBenchmarks = benchmarks.map((benchmark: any) => {
+          if (
+            benchmark.total === undefined ||
+            benchmark.correct === undefined ||
+            benchmark.accuracy_percent === undefined ||
+            !benchmark.model ||
+            !benchmark.val_json ||
+            !benchmark.mode
+          ) {
+            throw new Error("Benchmark JSON inválido. Verifique se todos os campos obrigatórios estão presentes.");
+          }
+
+          return {
+            model_name: extractModelName(benchmark.model),
+            model_path: benchmark.model,
+            total: benchmark.total,
+            correct: benchmark.correct,
+            accuracy_percent: benchmark.accuracy_percent,
+            by_answer_type: benchmark.by_answer_type ?? null,
+            val_json: benchmark.val_json,
+            mode: benchmark.mode,
+            generated_max_new_tokens: benchmark.generated_max_new_tokens ?? null,
+            stop_on_answer: benchmark.stop_on_answer ?? null,
+            out_dir: benchmark.out_dir ?? null,
+            runtime_seconds: benchmark.runtime_seconds ?? null,
+            avg_seconds_per_example: benchmark.avg_seconds_per_example ?? null,
+          };
+        });
+
+        const { error } = await supabase.from("benchmarks").insert(formattedBenchmarks);
 
         if (error) throw error;
         toast({

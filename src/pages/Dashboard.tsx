@@ -14,6 +14,46 @@ import type { Database } from "@/integrations/supabase/types";
 
 type BenchmarkRow = Database["public"]["Tables"]["benchmarks"]["Row"];
 
+const inferModelNameFromPath = (modelPath?: string | null): string | null => {
+  if (!modelPath) return null;
+  const parts = modelPath.split("/").filter(Boolean);
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (["grpo", "lora", "qlora", "outputs"].includes(parts[i]?.toLowerCase())) {
+      const candidate = parts[i + 1];
+      if (candidate && !candidate.includes(".")) {
+        return candidate;
+      }
+    }
+  }
+  const fallback = parts.filter(segment => !!segment && !segment.includes(".")).pop();
+  return fallback ?? null;
+};
+
+const inferTaskFromValJson = (valJson?: string | null): string | null => {
+  if (!valJson) return null;
+  const parts = valJson.split("/").filter(Boolean);
+  const tasksIndex = parts.findIndex(part => part.toLowerCase() === "tasks");
+  if (tasksIndex !== -1 && tasksIndex < parts.length - 1) {
+    return parts[tasksIndex + 1] ?? null;
+  }
+  const lastSegment = parts.pop();
+  if (!lastSegment) return null;
+  const [task] = lastSegment.split(".");
+  return task ?? null;
+};
+
+const inferTechniqueFromModelPath = (modelPath?: string | null): string | null => {
+  if (!modelPath) return null;
+  const lower = modelPath.toLowerCase();
+  if (lower.includes("grpo") && (lower.includes("lora") || lower.includes("qlora"))) {
+    return "Lora+GRPO";
+  }
+  if (lower.includes("grpo")) return "GRPO";
+  if (lower.includes("qlora")) return "Lora/QLora";
+  if (lower.includes("lora")) return "Lora/QLora";
+  return "Modelo base";
+};
+
 const Dashboard = () => {
   const isSupabaseConfigured = Boolean(
     import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
@@ -24,6 +64,14 @@ const Dashboard = () => {
   const [selectedTask, setSelectedTask] = useState<string>("all");
   const [selectedModel, setSelectedModel] = useState<string>("all");
   const [useMockData, setUseMockData] = useState<boolean>(() => !isSupabaseConfigured);
+
+  const resolveModelName = useCallback((benchmark: BenchmarkDetails) => {
+    return benchmark.model_name ?? inferModelNameFromPath(benchmark.model_path) ?? "Modelo desconhecido";
+  }, []);
+
+  const resolveTask = useCallback((benchmark: BenchmarkDetails) => {
+    return benchmark.task ?? inferTaskFromValJson(benchmark.val_json) ?? "Tarefa desconhecida";
+  }, []);
 
   // Export states
   const [selectedExportModels, setSelectedExportModels] = useState<string[]>([]);
@@ -67,9 +115,41 @@ const Dashboard = () => {
         return;
       }
 
-      const normalizedData: BenchmarkDetails[] = data.map((item: BenchmarkRow) => ({
-        ...item,
-      }));
+      const normalizedData: BenchmarkDetails[] = data.map((item: BenchmarkRow) => {
+        const modelPath = item.model_path;
+        const modelName = item.model_name ?? inferModelNameFromPath(modelPath);
+        const task = inferTaskFromValJson(item.val_json);
+        const technique = inferTechniqueFromModelPath(modelPath);
+        const accuracyValue =
+          typeof item.accuracy_percent === "number"
+            ? item.accuracy_percent
+            : Number(item.accuracy_percent);
+
+        const answerTypeStats =
+          item.by_answer_type && typeof item.by_answer_type === "object"
+            ? (item.by_answer_type as BenchmarkDetails["by_answer_type"])
+            : null;
+
+        return {
+          id: item.id,
+          model_path: modelPath,
+          model_name: modelName,
+          task,
+          technique,
+          created_at: item.created_at,
+          total: item.total,
+          correct: item.correct,
+          accuracy_percent: Number.isFinite(accuracyValue) ? accuracyValue : 0,
+          by_answer_type: answerTypeStats,
+          mode: item.mode,
+          generated_max_new_tokens: item.generated_max_new_tokens ?? undefined,
+          stop_on_answer: item.stop_on_answer ?? undefined,
+          runtime_seconds: item.runtime_seconds ?? undefined,
+          avg_seconds_per_example: item.avg_seconds_per_example ?? undefined,
+          out_dir: item.out_dir ?? undefined,
+          val_json: item.val_json,
+        };
+      });
 
       setBenchmarks(normalizedData);
     } catch (error) {
@@ -90,20 +170,27 @@ const Dashboard = () => {
   }, [loadBenchmarks]);
 
   const filteredBenchmarks = benchmarks.filter(b => {
-    if (selectedTask !== "all" && b.task_type !== selectedTask) return false;
-    if (selectedModel !== "all" && b.model_name !== selectedModel) return false;
+    if (selectedTask !== "all" && resolveTask(b) !== selectedTask) return false;
+    if (selectedModel !== "all" && resolveModelName(b) !== selectedModel) return false;
     return true;
   });
 
-  const uniqueTasks = Array.from(new Set(benchmarks.map(b => b.task_type)));
-  const uniqueModels = Array.from(new Set(benchmarks.map(b => b.model_name)));
+  const uniqueTasks = Array.from(
+    new Set(benchmarks.map(resolveTask).filter((task): task is string => Boolean(task)))
+  );
+  const uniqueModels = Array.from(
+    new Set(benchmarks.map(resolveModelName).filter((model): model is string => Boolean(model)))
+  );
 
   const topModels = [...filteredBenchmarks]
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.accuracy_percent - a.accuracy_percent)
     .slice(0, 3);
 
   const averageScore = filteredBenchmarks.length > 0
-    ? (filteredBenchmarks.reduce((sum, b) => sum + b.score, 0) / filteredBenchmarks.length).toFixed(2)
+    ? (
+        filteredBenchmarks.reduce((sum, b) => sum + (b.accuracy_percent ?? 0), 0) /
+        filteredBenchmarks.length
+      ).toFixed(2)
     : "0";
 
   const formatNumber = (value?: number | null, fractionDigits = 2) => {
@@ -232,18 +319,25 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {topModels.map((model, index) => (
-                  <div key={model.id} className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-bold">
-                      {index + 1}
+                {topModels.map((model, index) => {
+                  const modelName = resolveModelName(model);
+                  const taskLabel = formatLabel(resolveTask(model));
+                  const accuracy = formatNumber(model.accuracy_percent);
+                  return (
+                    <div key={model.id} className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-bold">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">{modelName}</p>
+                        <p className="text-sm text-muted-foreground">{taskLabel}</p>
+                      </div>
+                      <Badge variant="default">
+                        {accuracy !== "—" ? `${accuracy}%` : "—"}
+                      </Badge>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground">{model.model_name}</p>
-                      <p className="text-sm text-muted-foreground">{formatLabel(model.task_type)}</p>
-                    </div>
-                    <Badge variant="default">{formatNumber(model.score)}</Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -299,12 +393,11 @@ const Dashboard = () => {
               <div className="grid gap-6">
                 {filteredBenchmarks.map((benchmark) => {
                   const answerType = getPrimaryAnswerType(benchmark);
-                  const scoreDisplay = formatNumber(benchmark.score);
-                  const accuracyDisplay =
-                    typeof benchmark.accuracy_percent === "number"
-                      ? formatNumber(benchmark.accuracy_percent)
-                      : scoreDisplay;
-                  const datasetLabel = formatLabel(benchmark.dataset, "Dataset indisponível");
+                  const scoreDisplay = formatNumber(benchmark.accuracy_percent);
+                  const accuracyDisplay = scoreDisplay;
+                  const taskLabel = resolveTask(benchmark);
+                  const datasetLabel = taskLabel ? formatLabel(taskLabel, "Tarefa indisponível") : "Tarefa indisponível";
+                  const modelName = resolveModelName(benchmark);
                   const runtimeDisplay =
                     typeof benchmark.runtime_seconds === "number"
                       ? `${formatNumber(benchmark.runtime_seconds, 2)} s`
@@ -330,9 +423,9 @@ const Dashboard = () => {
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-1">
-                          <h3 className="text-xl font-semibold text-foreground">{benchmark.model_name}</h3>
+                          <h3 className="text-xl font-semibold text-foreground">{modelName}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {[formatLabel(benchmark.task_type), datasetLabel]
+                            {[datasetLabel]
                               .filter(Boolean)
                               .join(" • ")}
                           </p>
