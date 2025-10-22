@@ -8,7 +8,9 @@ export interface BenchmarkDetails {
   id: string;
   model_path: string;
   model_name?: string | null;
+  model_family?: string | null;
   task?: string | null;
+  benchmark_name?: string | null;
   technique?: string | null;
   created_at?: string | null;
   total: number;
@@ -28,8 +30,10 @@ export const mockBenchmarks: BenchmarkDetails[] = [
   {
     id: "benchmark-1",
     model_name: "Gemma 3-4B Instruct",
+    model_family: "Gemma 3-4B Instruct",
     model_path: "/home/baggio/tcc-llm/models/outputs/grpo/gemma-3-4b-it/aqua_rat/merged_fp16",
     task: "aqua_rat",
+    benchmark_name: "aqua_rat",
     technique: "GRPO",
     total: 100,
     correct: 58,
@@ -53,8 +57,10 @@ export const mockBenchmarks: BenchmarkDetails[] = [
   {
     id: "benchmark-2",
     model_name: "LLaMA 3.1 8B",
+    model_family: "LLaMA 3.1 8B",
     model_path: "/home/baggio/tcc-llm/models/outputs/lora/llama-3.1-8b/mmlu/merged_fp16",
     task: "mmlu",
+    benchmark_name: "mmlu",
     technique: "Lora/QLora",
     accuracy_percent: 71.3,
     total: 500,
@@ -78,8 +84,10 @@ export const mockBenchmarks: BenchmarkDetails[] = [
   {
     id: "benchmark-3",
     model_name: "Mistral 7B",
+    model_family: "Mistral 7B",
     model_path: "/home/baggio/tcc-llm/models/outputs/base/mistral-7b/gsm8k/merged_fp16",
     task: "gsm8k",
+    benchmark_name: "gsm8k",
     technique: "Modelo base",
     accuracy_percent: 42.6,
     total: 1319,

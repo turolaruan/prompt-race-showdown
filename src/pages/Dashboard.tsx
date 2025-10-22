@@ -3,16 +3,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
-import { mockBenchmarks, BenchmarkDetails } from "@/lib/mockBenchmarks";
-import type { Database } from "@/integrations/supabase/types";
+import { BenchmarkDetails, AnswerTypeStats } from "@/lib/mockBenchmarks";
+import evalResultsArray from "../../eval_results_array.json";
 
-type BenchmarkRow = Database["public"]["Tables"]["benchmarks"]["Row"];
+interface EvalResultTask {
+  total?: number;
+  correct?: number;
+  accuracy_percent?: number;
+  by_answer_type?: Record<string, AnswerTypeStats> | null;
+  model?: string;
+  val_json?: string;
+  mode?: string;
+  generated_max_new_tokens?: number | null;
+  stop_on_answer?: boolean | null;
+  runtime_seconds?: number | null;
+  avg_seconds_per_example?: number | null;
+  out_dir?: string | null;
+  created_at?: string | null;
+}
+
+type EvalResultRun = Record<string, EvalResultTask>;
+type EvalResultEntry = Record<string, EvalResultRun>;
+
+interface EvalResultsFile {
+  eval_results?: EvalResultEntry[];
+}
+
+const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
 
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
   if (!modelPath) return null;
@@ -54,23 +74,116 @@ const inferTechniqueFromModelPath = (modelPath?: string | null): string | null =
   return "Modelo base";
 };
 
-const Dashboard = () => {
-  const isSupabaseConfigured = Boolean(
-    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-  );
+const inferPartsFromRunKey = (runKey?: string | null) => {
+  if (!runKey) return [];
+  return runKey.split("__").filter(Boolean);
+};
 
+const inferTrainingTaskFromRunKey = (runKey?: string | null): string | null => {
+  const parts = inferPartsFromRunKey(runKey);
+  return parts[0] ?? null;
+};
+
+const inferModelFamilyFromRunKey = (runKey?: string | null): string | null => {
+  const parts = inferPartsFromRunKey(runKey);
+  return parts[1] ?? null;
+};
+
+const inferBenchmarkFromValJson = (valJson?: string | null): string | null => {
+  if (!valJson) return null;
+  const parts = valJson.split("/").filter(Boolean);
+  const benchmarksIndex = parts.findIndex(part => part.toLowerCase() === "benchmarks");
+  if (benchmarksIndex !== -1 && benchmarksIndex < parts.length - 1) {
+    return parts[benchmarksIndex + 1] ?? null;
+  }
+  const tasksIndex = parts.findIndex(part => part.toLowerCase() === "tasks");
+  if (tasksIndex !== -1 && tasksIndex < parts.length - 1) {
+    return parts[tasksIndex + 1] ?? null;
+  }
+  const lastSegment = parts.pop();
+  if (!lastSegment) return null;
+  const [name] = lastSegment.split(".");
+  return name ?? null;
+};
+
+const normalizeEvalResults = (data: EvalResultsFile): BenchmarkDetails[] => {
+  if (!data?.eval_results || !Array.isArray(data.eval_results)) {
+    return [];
+  }
+
+  const benchmarks: BenchmarkDetails[] = [];
+
+  data.eval_results.forEach(entry => {
+    Object.entries(entry ?? {}).forEach(([runKey, tasks]) => {
+      Object.entries(tasks ?? {}).forEach(([taskName, taskDetails]) => {
+        if (!taskDetails) return;
+
+        const modelPath = taskDetails.model ?? "";
+        const modelFamily = inferModelFamilyFromRunKey(runKey) ?? inferModelNameFromPath(modelPath);
+        const trainingTask = inferTrainingTaskFromRunKey(runKey) ?? inferTaskFromValJson(taskDetails.val_json);
+        const benchmarkName = taskName;
+        const accuracyValue =
+          typeof taskDetails.accuracy_percent === "number"
+            ? taskDetails.accuracy_percent
+            : Number(taskDetails.accuracy_percent ?? 0);
+        const totalValue =
+          typeof taskDetails.total === "number"
+            ? taskDetails.total
+            : Number(taskDetails.total ?? 0);
+        const correctValue =
+          typeof taskDetails.correct === "number"
+            ? taskDetails.correct
+            : Number(taskDetails.correct ?? 0);
+
+        benchmarks.push({
+          id: `${runKey}__${taskName}`,
+          model_path: modelPath,
+          model_name: runKey,
+          model_family: modelFamily,
+          task: trainingTask ?? null,
+          benchmark_name: benchmarkName,
+          technique: inferTechniqueFromModelPath(modelPath),
+          created_at: taskDetails.created_at ?? null,
+          total: Number.isFinite(totalValue) ? totalValue : 0,
+          correct: Number.isFinite(correctValue) ? correctValue : 0,
+          accuracy_percent: Number.isFinite(accuracyValue) ? accuracyValue : 0,
+          by_answer_type: taskDetails.by_answer_type ?? null,
+          mode: taskDetails.mode ?? "desconhecido",
+          generated_max_new_tokens: taskDetails.generated_max_new_tokens ?? null,
+          stop_on_answer: taskDetails.stop_on_answer ?? null,
+          runtime_seconds: taskDetails.runtime_seconds ?? null,
+          avg_seconds_per_example: taskDetails.avg_seconds_per_example ?? null,
+          out_dir: taskDetails.out_dir ?? null,
+          val_json: taskDetails.val_json ?? "",
+        });
+      });
+    });
+  });
+
+  return benchmarks;
+};
+
+const Dashboard = () => {
   const [benchmarks, setBenchmarks] = useState<BenchmarkDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<string>("all");
   const [selectedModel, setSelectedModel] = useState<string>("all");
-  const [useMockData, setUseMockData] = useState<boolean>(() => !isSupabaseConfigured);
+  const [selectedModelFamily, setSelectedModelFamily] = useState<string>("all");
+  const [selectedTechnique, setSelectedTechnique] = useState<string>("all");
+  const [selectedBenchmark, setSelectedBenchmark] = useState<string>("all");
+  const [rankingOrder, setRankingOrder] = useState<"desc" | "asc">("desc");
 
   const resolveModelName = useCallback((benchmark: BenchmarkDetails) => {
     return benchmark.model_name ?? inferModelNameFromPath(benchmark.model_path) ?? "Modelo desconhecido";
   }, []);
 
   const resolveTask = useCallback((benchmark: BenchmarkDetails) => {
-    return benchmark.task ?? inferTaskFromValJson(benchmark.val_json) ?? "Tarefa desconhecida";
+    if (benchmark.task) return benchmark.task;
+    if (benchmark.model_name) {
+      const taskFromRunKey = inferTrainingTaskFromRunKey(benchmark.model_name);
+      if (taskFromRunKey) return taskFromRunKey;
+    }
+    return inferTaskFromValJson(benchmark.val_json) ?? "Tarefa desconhecida";
   }, []);
 
   // Export states
@@ -82,88 +195,52 @@ const Dashboard = () => {
   const availableTasks = ["Resumo", "Tradução", "Análise", "Criação", "Resposta"];
   const availableTechniques = ["Modelo base", "Lora/QLora", "GRPO", "Lora+GRPO"];
 
-  const loadBenchmarks = useCallback(async () => {
+  const resolveModelFamily = useCallback((benchmark: BenchmarkDetails) => {
+    if (benchmark.model_family) return benchmark.model_family;
+    if (benchmark.model_name) return inferModelFamilyFromRunKey(benchmark.model_name) ?? benchmark.model_name;
+    return inferModelNameFromPath(benchmark.model_path) ?? "Família desconhecida";
+  }, []);
+
+  const resolveTechnique = useCallback((benchmark: BenchmarkDetails) => {
+    return benchmark.technique ?? inferTechniqueFromModelPath(benchmark.model_path) ?? "Técnica desconhecida";
+  }, []);
+
+  const resolveBenchmark = useCallback((benchmark: BenchmarkDetails) => {
+    if (benchmark.benchmark_name) return benchmark.benchmark_name;
+    const fromVal = inferBenchmarkFromValJson(benchmark.val_json);
+    if (fromVal) return fromVal;
+    if (benchmark.model_name) {
+      const runParts = inferPartsFromRunKey(benchmark.model_name);
+      return runParts[2] ?? runParts[0] ?? "Benchmark desconhecido";
+    }
+    return "Benchmark desconhecido";
+  }, []);
+
+  const loadBenchmarks = useCallback(() => {
     setIsLoading(true);
 
-    if (useMockData) {
-      setBenchmarks(mockBenchmarks);
-      setIsLoading(false);
-      return;
-    }
-
-    if (!isSupabaseConfigured) {
-      toast({
-        title: "Configuração necessária",
-        description: "Defina as credenciais do Supabase para carregar os dados reais.",
-        variant: "destructive",
-      });
-      setBenchmarks([]);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from("benchmarks")
-        .select("*")
-        .order("score", { ascending: false });
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        setBenchmarks([]);
-        return;
+      const normalizedData = normalizeEvalResults(evalResultsArray as EvalResultsFile);
+      if (normalizedData.length === 0) {
+        toast({
+          title: "Nenhum dado encontrado",
+          description: "O arquivo eval_results_array.json não possui benchmarks disponíveis.",
+          variant: "destructive",
+        });
       }
-
-      const normalizedData: BenchmarkDetails[] = data.map((item: BenchmarkRow) => {
-        const modelPath = item.model_path;
-        const modelName = item.model_name ?? inferModelNameFromPath(modelPath);
-        const task = inferTaskFromValJson(item.val_json);
-        const technique = inferTechniqueFromModelPath(modelPath);
-        const accuracyValue =
-          typeof item.accuracy_percent === "number"
-            ? item.accuracy_percent
-            : Number(item.accuracy_percent);
-
-        const answerTypeStats =
-          item.by_answer_type && typeof item.by_answer_type === "object"
-            ? (item.by_answer_type as BenchmarkDetails["by_answer_type"])
-            : null;
-
-        return {
-          id: item.id,
-          model_path: modelPath,
-          model_name: modelName,
-          task,
-          technique,
-          created_at: item.created_at,
-          total: item.total,
-          correct: item.correct,
-          accuracy_percent: Number.isFinite(accuracyValue) ? accuracyValue : 0,
-          by_answer_type: answerTypeStats,
-          mode: item.mode,
-          generated_max_new_tokens: item.generated_max_new_tokens ?? undefined,
-          stop_on_answer: item.stop_on_answer ?? undefined,
-          runtime_seconds: item.runtime_seconds ?? undefined,
-          avg_seconds_per_example: item.avg_seconds_per_example ?? undefined,
-          out_dir: item.out_dir ?? undefined,
-          val_json: item.val_json,
-        };
-      });
-
       setBenchmarks(normalizedData);
     } catch (error) {
       console.error("Error loading benchmarks:", error);
       toast({
         title: "Erro ao carregar benchmarks",
-        description: "Não foi possível carregar os dados do Supabase.",
+        description: "Não foi possível processar os dados do arquivo local.",
         variant: "destructive",
       });
       setBenchmarks([]);
     } finally {
       setIsLoading(false);
     }
-  }, [useMockData, isSupabaseConfigured]);
+  }, []);
 
   useEffect(() => {
     loadBenchmarks();
@@ -172,19 +249,42 @@ const Dashboard = () => {
   const filteredBenchmarks = benchmarks.filter(b => {
     if (selectedTask !== "all" && resolveTask(b) !== selectedTask) return false;
     if (selectedModel !== "all" && resolveModelName(b) !== selectedModel) return false;
+    if (selectedModelFamily !== "all" && resolveModelFamily(b) !== selectedModelFamily) return false;
+    if (selectedTechnique !== "all" && resolveTechnique(b) !== selectedTechnique) return false;
+    if (selectedBenchmark !== "all" && resolveBenchmark(b) !== selectedBenchmark) return false;
     return true;
   });
 
-  const uniqueTasks = Array.from(
-    new Set(benchmarks.map(resolveTask).filter((task): task is string => Boolean(task)))
-  );
+  const resolvedTasks = benchmarks
+    .map(resolveTask)
+    .filter((task): task is string => Boolean(task) && task !== "Tarefa desconhecida");
+  const knownTasksInData = KNOWN_TASKS.filter(task => resolvedTasks.includes(task));
+  const extraTasks = resolvedTasks.filter(task => !KNOWN_TASKS.includes(task));
+  const uniqueExtraTasks = Array.from(new Set(extraTasks));
+  const uniqueTasks = [...knownTasksInData, ...uniqueExtraTasks];
   const uniqueModels = Array.from(
     new Set(benchmarks.map(resolveModelName).filter((model): model is string => Boolean(model)))
   );
+  const uniqueModelFamilies = Array.from(
+    new Set(benchmarks.map(resolveModelFamily).filter((family): family is string => Boolean(family)))
+  );
+  const uniqueTechniques = Array.from(
+    new Set(benchmarks.map(resolveTechnique).filter((tech): tech is string => Boolean(tech)))
+  );
+  const KNOWN_BENCHMARKS = ["bbh", "gpqa", "gsm8k_bench", "hendrycks_math", "mmlu"];
+  const resolvedBenchmarks = benchmarks
+    .map(resolveBenchmark)
+    .filter((bench): bench is string => Boolean(bench) && bench !== "Benchmark desconhecido");
+  const uniqueBenchmarks = KNOWN_BENCHMARKS.filter(bench => resolvedBenchmarks.includes(bench));
 
   const topModels = [...filteredBenchmarks]
     .sort((a, b) => b.accuracy_percent - a.accuracy_percent)
     .slice(0, 3);
+
+  const orderedBenchmarks = [...filteredBenchmarks].sort((a, b) => {
+    const diff = (a.accuracy_percent ?? 0) - (b.accuracy_percent ?? 0);
+    return rankingOrder === "desc" ? -diff : diff;
+  });
 
   const averageScore = filteredBenchmarks.length > 0
     ? (
@@ -261,16 +361,7 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Análise de performance dos modelos em diferentes tarefas</p>
           </div>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="dashboard-data-mode"
-                checked={useMockData}
-                onCheckedChange={setUseMockData}
-              />
-              <Label htmlFor="dashboard-data-mode" className="text-sm font-medium cursor-pointer">
-                {useMockData ? "Modo Mock" : "Banco de Dados"}
-              </Label>
-            </div>
+            <p className="text-sm text-muted-foreground">Fonte: eval_results_array.json</p>
             <BarChart3 className="h-12 w-12 text-primary" />
           </div>
         </div>
@@ -344,8 +435,8 @@ const Dashboard = () => {
         )}
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="flex-1">
             <Select value={selectedTask} onValueChange={setSelectedTask}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por tarefa" />
@@ -359,7 +450,7 @@ const Dashboard = () => {
             </Select>
           </div>
 
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1">
             <Select value={selectedModel} onValueChange={setSelectedModel}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por modelo" />
@@ -369,6 +460,60 @@ const Dashboard = () => {
                 {uniqueModels.map(model => (
                   <SelectItem key={model} value={model}>{model}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1">
+            <Select value={selectedModelFamily} onValueChange={setSelectedModelFamily}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por família" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Famílias</SelectItem>
+                {uniqueModelFamilies.map(family => (
+                  <SelectItem key={family} value={family}>{family}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1">
+            <Select value={selectedTechnique} onValueChange={setSelectedTechnique}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por técnica" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as Técnicas</SelectItem>
+                {uniqueTechniques.map(technique => (
+                  <SelectItem key={technique} value={technique}>{technique}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1">
+            <Select value={selectedBenchmark} onValueChange={setSelectedBenchmark}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filtrar por benchmark" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Benchmarks</SelectItem>
+                {uniqueBenchmarks.map(benchmark => (
+                  <SelectItem key={benchmark} value={benchmark}>{benchmark}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex-1">
+            <Select value={rankingOrder} onValueChange={value => setRankingOrder(value as "asc" | "desc")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Ordenar por ranking" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Ranking: Maior → Menor</SelectItem>
+                <SelectItem value="asc">Ranking: Menor → Maior</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -391,13 +536,18 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="grid gap-6">
-                {filteredBenchmarks.map((benchmark) => {
+                {orderedBenchmarks.map((benchmark) => {
                   const answerType = getPrimaryAnswerType(benchmark);
                   const scoreDisplay = formatNumber(benchmark.accuracy_percent);
                   const accuracyDisplay = scoreDisplay;
                   const taskLabel = resolveTask(benchmark);
-                  const datasetLabel = taskLabel ? formatLabel(taskLabel, "Tarefa indisponível") : "Tarefa indisponível";
+                  const benchmarkLabel = resolveBenchmark(benchmark);
+                  const datasetLabel = [taskLabel, benchmarkLabel]
+                    .filter(Boolean)
+                    .map(label => formatLabel(label))
+                    .join(" • ") || "Tarefa indisponível";
                   const modelName = resolveModelName(benchmark);
+                  const techniqueLabel = resolveTechnique(benchmark);
                   const runtimeDisplay =
                     typeof benchmark.runtime_seconds === "number"
                       ? `${formatNumber(benchmark.runtime_seconds, 2)} s`
@@ -431,9 +581,9 @@ const Dashboard = () => {
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          {benchmark.technique && (
+                          {techniqueLabel && techniqueLabel !== "Técnica desconhecida" && (
                             <Badge variant="secondary" className="text-xs uppercase tracking-wide">
-                              {benchmark.technique}
+                              {techniqueLabel}
                             </Badge>
                           )}
                           <Badge variant="default" className="text-lg px-3 py-1 font-semibold">
