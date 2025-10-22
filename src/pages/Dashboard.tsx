@@ -186,15 +186,6 @@ const Dashboard = () => {
     return inferTaskFromValJson(benchmark.val_json) ?? "Tarefa desconhecida";
   }, []);
 
-  // Export states
-  const [selectedExportModels, setSelectedExportModels] = useState<string[]>([]);
-  const [selectedExportTasks, setSelectedExportTasks] = useState<string[]>([]);
-  const [selectedExportTechniques, setSelectedExportTechniques] = useState<string[]>([]);
-
-  const availableModels = ["GPT-4", "Claude 3", "Gemini Pro", "LLaMA 3", "Mistral"];
-  const availableTasks = ["Resumo", "Tradução", "Análise", "Criação", "Resposta"];
-  const availableTechniques = ["Modelo base", "Lora/QLora", "GRPO", "Lora+GRPO"];
-
   const resolveModelFamily = useCallback((benchmark: BenchmarkDetails) => {
     if (benchmark.model_family) return benchmark.model_family;
     if (benchmark.model_name) return inferModelFamilyFromRunKey(benchmark.model_name) ?? benchmark.model_name;
@@ -286,6 +277,57 @@ const Dashboard = () => {
     return rankingOrder === "desc" ? -diff : diff;
   });
 
+  const handleExport = () => {
+    if (orderedBenchmarks.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Ajuste os filtros para selecionar benchmarks antes de exportar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const exportPayload = orderedBenchmarks.map(benchmark => ({
+      id: benchmark.id,
+      model_path: benchmark.model_path,
+      model_name: benchmark.model_name,
+      model_family: benchmark.model_family,
+      task: benchmark.task,
+      benchmark_name: benchmark.benchmark_name,
+      technique: benchmark.technique,
+      created_at: benchmark.created_at,
+      total: benchmark.total,
+      correct: benchmark.correct,
+      accuracy_percent: benchmark.accuracy_percent,
+      by_answer_type: benchmark.by_answer_type,
+      mode: benchmark.mode,
+      generated_max_new_tokens: benchmark.generated_max_new_tokens,
+      stop_on_answer: benchmark.stop_on_answer,
+      runtime_seconds: benchmark.runtime_seconds,
+      avg_seconds_per_example: benchmark.avg_seconds_per_example,
+      out_dir: benchmark.out_dir,
+      val_json: benchmark.val_json,
+    }));
+
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    link.href = url;
+    link.download = `benchmarks-export-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Exportação concluída",
+      description: `Exportados ${exportPayload.length} benchmark(s) para JSON.`,
+    });
+  };
+
   const averageScore = filteredBenchmarks.length > 0
     ? (
         filteredBenchmarks.reduce((sum, b) => sum + (b.accuracy_percent ?? 0), 0) /
@@ -325,30 +367,6 @@ const Dashboard = () => {
     return { label, stats };
   };
 
-  const toggleSelection = (item: string, list: string[], setList: (list: string[]) => void) => {
-    if (list.includes(item)) {
-      setList(list.filter(i => i !== item));
-    } else {
-      setList([...list, item]);
-    }
-  };
-
-  const handleExport = () => {
-    if (selectedExportModels.length === 0 || selectedExportTasks.length === 0 || selectedExportTechniques.length === 0) {
-      toast({
-        title: "Seleção incompleta",
-        description: "Por favor, selecione pelo menos um modelo, uma tarefa e uma técnica.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Exportando modelo",
-      description: `Exportando ${selectedExportModels.length} modelo(s) com ${selectedExportTechniques.length} técnica(s) para ${selectedExportTasks.length} tarefa(s).`
-    });
-  };
-
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <AppSidebar />
@@ -361,7 +379,10 @@ const Dashboard = () => {
             <p className="text-muted-foreground">Análise de performance dos modelos em diferentes tarefas</p>
           </div>
           <div className="flex items-center gap-4">
-            <p className="text-sm text-muted-foreground">Fonte: eval_results_array.json</p>
+            <Button onClick={handleExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
             <BarChart3 className="h-12 w-12 text-primary" />
           </div>
         </div>
@@ -694,72 +715,6 @@ const Dashboard = () => {
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Model Export Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Exportação de Modelo</CardTitle>
-            <p className="text-sm text-muted-foreground">Selecione um modelo para exportar:</p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Models */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">Modelos:</h3>
-              <div className="flex flex-wrap gap-2">
-                {availableModels.map(model => (
-                  <Badge
-                    key={model}
-                    variant={selectedExportModels.includes(model) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSelection(model, selectedExportModels, setSelectedExportModels)}
-                  >
-                    {model}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Tasks */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">Tarefa:</h3>
-              <div className="flex flex-wrap gap-2">
-                {availableTasks.map(task => (
-                  <Badge
-                    key={task}
-                    variant={selectedExportTasks.includes(task) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSelection(task, selectedExportTasks, setSelectedExportTasks)}
-                  >
-                    {task}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Techniques */}
-            <div>
-              <h3 className="text-sm font-medium mb-3">Técnica:</h3>
-              <div className="flex flex-wrap gap-2">
-                {availableTechniques.map(technique => (
-                  <Badge
-                    key={technique}
-                    variant={selectedExportTechniques.includes(technique) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSelection(technique, selectedExportTechniques, setSelectedExportTechniques)}
-                  >
-                    {technique}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            {/* Export Button */}
-            <Button onClick={handleExport} className="w-full gap-2">
-              <Download className="h-4 w-4" />
-              Exportar
-            </Button>
           </CardContent>
         </Card>
       </div>
