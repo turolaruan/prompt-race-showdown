@@ -1,17 +1,16 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Loader2, Send, Trophy, Timer, ThumbsUp, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { Loader2, Send, Trophy, Timer, ThumbsUp } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import gbcsrtLogo from "@/assets/gb-cs-rt-logo.png";
-import Leaderboard from "./Leaderboard";
 import { useChatHistory } from "@/context/ChatHistoryContext";
 import type { ChatHistoryEntry } from "@/context/ChatHistoryContext";
+import { cn } from "@/lib/utils";
 
 interface ModelResponse {
   modelId: string;
@@ -26,6 +25,11 @@ interface OutputDetails {
   response: string;
   responseTimeMs: number;
 }
+
+export interface ArenaInterfaceHandle {
+  startNewChat: () => void;
+  loadChat: (chat: ChatHistoryEntry) => void;
+}
 const getModelDisplayName = (modelId: string): string => {
   if (!modelId) {
     return "Modelo desconhecido";
@@ -38,7 +42,7 @@ const getModelDisplayName = (modelId: string): string => {
   }
   return cleanId;
 };
-const ArenaInterface = () => {
+const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const {
     history: chatHistory,
     currentChatId,
@@ -46,7 +50,6 @@ const ArenaInterface = () => {
     updateChat,
     setCurrentChat,
   } = useChatHistory();
-  const [currentView, setCurrentView] = useState<"chat" | "leaderboard">("chat");
   const [prompt, setPrompt] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [fastestResponses, setFastestResponses] = useState<ModelResponse[]>([]);
@@ -54,7 +57,23 @@ const ArenaInterface = () => {
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<OutputDetails[]>([]);
   const [useMockData, setUseMockData] = useState(true);
-  const promptSuggestions = ["Explique como funciona a inteligência artificial", "Escreva um código Python para calcular fibonacci", "Qual é a diferença entre machine learning e deep learning?", "Crie uma receita de bolo de chocolate", "Explique a teoria da relatividade de Einstein", "Como funciona o algoritmo de ordenação quicksort?"];
+  const promptSuggestions = [
+    "Explique como funciona a inteligência artificial",
+    "Escreva um código Python para calcular fibonacci",
+    "Qual é a diferença entre machine learning e deep learning?",
+    "Crie uma receita de bolo de chocolate",
+    "Explique a teoria da relatividade de Einstein",
+    "Como funciona o algoritmo de ordenação quicksort?",
+  ];
+  const heroModels = ["Gemini Pro", "Claude 3", "GPT-5", "DeepSeek", "LLaMA 3", "Mixtral"];
+
+  useEffect(() => {
+    if (!currentChatId) return;
+    const target = chatHistory.find(chat => chat.id === currentChatId);
+    if (target) {
+      setPrompt(target.prompt);
+    }
+  }, [currentChatId, chatHistory]);
   const formatTime = (milliseconds: number): string => {
     if (milliseconds < 1000) {
       return `${Math.round(milliseconds)}ms`;
@@ -67,12 +86,40 @@ const ArenaInterface = () => {
     }
     return `${seconds}s`;
   };
+  const derivedOutputs = useMemo<OutputDetails[]>(() => {
+    if (outputs.length > 0) {
+      return outputs;
+    }
+
+    const parsed: OutputDetails[] = [];
+    fastestResponses.forEach(response => {
+      if (!response?.response) return;
+      try {
+        const payload = JSON.parse(response.response);
+        const data = Array.isArray(payload?.outputs) ? payload.outputs : [];
+        data.forEach((item: any, index: number) => {
+          const outputId = typeof item?.id === "string" ? item.id : `output${index + 1}`;
+          parsed.push({
+            id: outputId,
+            modelId: typeof item?.modelId === "string" ? item.modelId : outputId,
+            modelName: typeof item?.modelName === "string" ? item.modelName : getModelDisplayName(item?.modelId ?? outputId),
+            response: typeof item?.response === "string" ? item.response : "",
+            responseTimeMs: typeof item?.responseTimeMs === "number" ? item.responseTimeMs : 0,
+          });
+        });
+      } catch (error) {
+        console.error("Error parsing fallback outputs:", error);
+      }
+    });
+    return parsed;
+  }, [outputs, fastestResponses]);
+
   const outputsById = useMemo(() => {
-    return outputs.reduce<Record<string, OutputDetails>>((acc, item) => {
+    return derivedOutputs.reduce<Record<string, OutputDetails>>((acc, item) => {
       acc[item.id] = item;
       return acc;
     }, {});
-  }, [outputs]);
+  }, [derivedOutputs]);
   const generateMockResponse = async (prompt: string): Promise<any> => {
     // Simular delay da API
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
@@ -253,271 +300,278 @@ const ArenaInterface = () => {
       updateChat(currentChatId, { winner: selectedModelName });
     }
     
-    toast({
+  toast({
       title: "Voto Registrado!",
       description: selectedOutput ? `Você votou na resposta gerada pelo modelo ${selectedModelName}.` : "Voto registrado."
     });
   };
-  const startNewChat = () => {
-    setCurrentView("chat");
+
+  const startNewChat = useCallback(() => {
     setPrompt("");
     setFastestResponses([]);
     setCurrentChat(null);
     setHasVoted(false);
     setVotedFor(null);
     setOutputs([]);
-  };
-  const loadChatFromHistory = (chat: ChatHistoryEntry) => {
+  }, [setCurrentChat]);
+
+  const loadChatFromHistory = useCallback((chat: ChatHistoryEntry) => {
     setPrompt(chat.prompt);
     setCurrentChat(chat.id);
-    // You could reload the responses here if needed
-  };
-  return <div className="flex flex-col lg:flex-row min-h-screen bg-background overflow-x-hidden">
-      {/* Sidebar */}
-      <div className="w-full lg:w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
-        <div className="p-4 overflow-y-auto lg:max-h-screen">
-          <div className="flex items-center gap-3 text-sidebar-foreground font-bold text-lg mb-6">
-            <img src={gbcsrtLogo} alt="GB-CS-RT" className="w-8 h-8" />
-            GB-CS-RT
+    setFastestResponses([]);
+    setHasVoted(false);
+    setVotedFor(null);
+    setOutputs([]);
+  }, [setCurrentChat]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      startNewChat,
+      loadChat: loadChatFromHistory,
+    }),
+    [startNewChat, loadChatFromHistory]
+  );
+
+  const currentPromptLabel = currentChatId
+    ? chatHistory.find(entry => entry.id === currentChatId)?.prompt ?? ""
+    : "";
+  const hasAnyResponses = fastestResponses.length > 0;
+  const hasCompletedResponses = fastestResponses.some(response => !response.isLoading);
+  const isProcessing = hasAnyResponses && !hasCompletedResponses;
+  const outputsCount = derivedOutputs.length;
+
+  return (
+    <div className="relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
+      <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.45em] text-primary/70">Arena</p>
+            <h2 className="text-base font-semibold text-sidebar-foreground">Comparador de Modelos</h2>
           </div>
-          
-          <Button onClick={startNewChat} className="w-full justify-start gap-2 mb-4 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-accent-foreground">
-            <MessageSquare size={16} />
-            Novo Chat
-          </Button>
-
-          <Button 
-            onClick={() => setCurrentView("leaderboard")} 
-            variant={currentView === "leaderboard" ? "default" : "outline"}
-            className="w-full justify-start gap-2 mb-2"
-          >
-            <TrendingUp size={16} />
-            Leaderboard
-          </Button>
-
-          <Button 
-            onClick={() => window.location.href = "/dashboard"} 
-            variant="outline"
-            className="w-full justify-start gap-2 mb-6"
-          >
-            <Trophy size={16} />
-            Dashboard
-          </Button>
-          
-          {/* Chat History */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-sidebar-foreground mb-3">Histórico</h3>
-            <div className="space-y-1 max-h-96 overflow-y-auto">
-              {chatHistory.map(chat => <button key={chat.id} onClick={() => loadChatFromHistory(chat)} className="w-full text-left p-3 rounded-lg hover:bg-sidebar-accent/50 transition-colors group">
-                  <div className="text-sm text-sidebar-foreground truncate mb-1">
-                    {chat.prompt}
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {new Date(chat.timestamp).toLocaleDateString()}
-                    </span>
-                    {chat.winner && <span className="flex items-center gap-1 text-winner">
-                        <Trophy size={12} />
-                        {chat.winner}
-                      </span>}
-                  </div>
-                </button>)}
-              {chatHistory.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum chat realizado ainda
-                </p>}
-            </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 shadow-[0_18px_40px_-25px_rgba(147,51,234,0.8)]">
+            <Label htmlFor="mock-mode" className="text-sm font-medium text-sidebar-foreground">
+              {useMockData ? "Modo Mock" : "Endpoint Real"}
+            </Label>
+            <Switch id="mock-mode" checked={useMockData} onCheckedChange={setUseMockData} />
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {currentView === "leaderboard" ? (
-          <Leaderboard />
-        ) : (
-          <div className="flex-1 flex flex-col">
-            {/* Toggle Mock/Real Mode */}
-            <div className="border-b border-border bg-muted/30 px-4 py-4 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="mock-mode"
-                  checked={useMockData}
-                  onCheckedChange={setUseMockData}
-                />
-                <Label htmlFor="mock-mode" className="text-sm font-medium cursor-pointer">
-                  {useMockData ? "Modo Mock" : "Endpoint Real"}
-                </Label>
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+          {!hasAnyResponses ? (
+            <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(147,51,234,0.22),rgba(59,130,246,0.12)_45%,rgba(15,23,42,0.55))] px-6 py-14 sm:px-10 shadow-[0_40px_120px_-60px_rgba(79,70,229,0.6)]">
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -top-24 left-16 h-56 w-56 rounded-full bg-primary/25 blur-3xl" />
+                <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-accent/15 blur-3xl" />
               </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto">
-            {fastestResponses.length === 0 ? (/* Initial View */
-          <div className="flex flex-col items-center justify-center h-full px-[32px]">
-                {/* Model Icons */}
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">G</span>
+              <div className="relative flex flex-col items-center gap-10 text-center">
+                <div className="flex flex-wrap justify-center gap-3">
+                  {heroModels.map(model => (
+                    <span
+                      key={model}
+                      className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-semibold text-sidebar-foreground shadow-[0_20px_50px_-30px_rgba(147,51,234,0.7)]"
+                    >
+                      {model.charAt(0)}
+                    </span>
+                  ))}
+                </div>
+                <div className="space-y-4 sm:space-y-6">
+                  <h1 className="text-balance text-4xl font-bold text-foreground sm:text-6xl lg:text-7xl">
+                    Encontre a melhor IA para você
+                  </h1>
+                  <p className="mx-auto max-w-3xl text-balance text-base text-muted-foreground sm:text-lg">
+                    Faça perguntas, compare respostas entre modelos e registre seu feedback para evoluir a comunidade.
+                  </p>
+                </div>
+                <div className="grid gap-3 text-left text-sm text-sidebar-foreground/90 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
+                    🔮 Benchmarks em tempo real
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center">
-                    <span className="text-sm font-bold text-accent">C</span>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
+                    🧪 Experimente modos mock ou endpoint real
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-secondary/40 flex items-center justify-center">
-                    <span className="text-sm font-bold text-secondary-foreground">G</span>
+                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
+                    🏆 Escolha o modelo com melhor resposta
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-primary/30 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">D</span>
+                </div>
+              </div>
+            </section>
+          ) : isProcessing ? (
+            <section className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-primary/25 bg-white/5 text-center shadow-[0_40px_120px_-70px_rgba(147,51,234,0.6)]">
+              <Loader2 className="h-14 w-14 animate-spin text-primary" />
+              <p className="mt-6 text-lg font-semibold text-foreground">Processando respostas...</p>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                Estamos consultando os modelos selecionados. Este processo pode levar alguns segundos.
+              </p>
+            </section>
+          ) : (
+            <section className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background/85 to-background shadow-[0_50px_140px_-80px_rgba(147,51,234,0.6)]">
+              <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+                <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
+              </div>
+              <div className="relative space-y-8 p-6 sm:p-10">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Resultado</p>
+                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Comparativo de Respostas</h2>
+                    <p className="max-w-3xl text-sm text-muted-foreground">
+                      Prompt analisado: {" "}
+                      <span className="font-medium text-primary/85">
+                        {currentPromptLabel || "Prompt não definido"}
+                      </span>
+                    </p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-accent/30 flex items-center justify-center">
-                    <span className="text-sm font-bold text-accent">L</span>
-                  </div>
-                  <div className="w-12 h-12 rounded-full bg-primary/25 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">M</span>
+                  <div className="rounded-full border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary">
+                    {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"}
                   </div>
                 </div>
 
-                {/* Main Heading */}
-                <h1 className="text-4xl sm:text-6xl lg:text-8xl font-bold text-foreground mb-8 text-center px-4">Encontre a melhor IA para você</h1>
-                
-                <p className="text-2xl text-muted-foreground text-center mb-16 max-w-5xl">Faça perguntas e obtenha respostas inteligentes, compare as respostas entre os diversos modelos e compartilhe o seu feedback </p>
-              </div>) : (/* Results View */
-           <div className="p-4 sm:p-6 lg:p-8">
-                <div className="max-w-full mx-auto px-2 sm:px-4">
-                  {/* Header */}
-                  <div className="mb-6 sm:mb-8">
-                    <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-3">Respostas da IA</h2>
-                    <p className="text-base sm:text-lg text-muted-foreground">Prompt: "{currentChatId ? chatHistory.find(c => c.id === currentChatId)?.prompt : ""}"</p>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+                  {derivedOutputs.map((item, index) => {
+                    const outputId = item.id;
+                    const modelLabel = item.modelName || getModelDisplayName(item.modelId);
+                    const isWinner = hasVoted && votedFor === outputId;
+                    const isRunnerUp = hasVoted && votedFor !== outputId;
+                    const answerText = item.response && item.response.length > 0 ? item.response : "Resposta não disponível";
+                    const durationMs = Number.isFinite(item.responseTimeMs) ? item.responseTimeMs : 0;
 
-                  {/* Results Display */}
-                  <div className="w-full">
-                    {fastestResponses.map((response, index) => {
-                  const isLoading = response.isLoading;
-                  const selectedOutput = votedFor ? outputsById[votedFor] : undefined;
-                  return <div key={response.modelId} className="relative overflow-hidden">
-                            {isLoading ? <div className="flex items-center justify-center py-16">
-                                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                                <span className="ml-4 text-2xl text-muted-foreground">Processando...</span>
-                              </div> : <div className="space-y-8">
-                                {(() => {
-                          try {
-                            const parsedResponse = JSON.parse(response.response);
-                            const outputsData = Array.isArray(parsedResponse?.outputs) ? parsedResponse.outputs : [];
-                            if (outputsData.length === 0) {
-                              return <div className="bg-muted rounded-lg p-12 min-h-[300px]">
-                                          <p className="text-2xl leading-relaxed whitespace-pre-line">
-                                            {response.response}
-                                          </p>
-                                        </div>;
-                            }
-                            return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                                        {outputsData.map((item: any, outputIndex: number) => {
-                                  const outputId = typeof item?.id === "string" ? item.id : `output${outputIndex + 1}`;
-                                  const outputLetter = String.fromCharCode(65 + outputIndex);
-                                  const outputDetails = outputsById[outputId];
-                                  const title = `Modelo ${outputLetter}`;
-                                  const subtitle = hasVoted ? outputDetails?.modelId ?? "Modelo não identificado" : "";
-                                  const isWinner = hasVoted && votedFor === outputId;
-                                  const isRunnerUp = hasVoted && votedFor !== outputId;
-                                  const durationMs = typeof item?.responseTimeMs === "number" ? item.responseTimeMs : response.responseTime;
-                                  const answerText = typeof item?.response === "string" && item.response.length > 0 ? item.response : "Resposta não disponível";
-                                  return <Card key={outputId} className="bg-card border-2 border-border hover:border-primary/50 transition-all duration-300 shadow-lg hover:shadow-xl">
-                                                <CardHeader className="pb-3 border-b border-border p-4 sm:p-6">
-                                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                      {isWinner && <Badge className="bg-primary/20 text-primary border-primary/30 px-3 py-1 text-sm">
-                                                          #1º Lugar
-                                                        </Badge>}
-                                                      {isRunnerUp && <Badge variant="outline" className="px-3 py-1 text-sm">
-                                                          Finalista
-                                                        </Badge>}
-                                                      <div>
-                                                        <h3 className="text-lg sm:text-xl font-bold text-foreground">
-                                                          {title}
-                                                        </h3>
-                                                        {hasVoted && <p className="text-xs sm:text-sm text-muted-foreground break-all mt-0.5">
-                                                            {subtitle}
-                                                          </p>}
-                                                      </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                                                      <Clock size={16} />
-                                                      <span className="text-sm font-medium">{formatTime(durationMs)}</span>
-                                                    </div>
-                                                  </div>
-                                                </CardHeader>
-
-                                                <CardContent className="p-4 sm:p-6">
-                                                  <p className="text-lg sm:text-xl lg:text-2xl leading-relaxed whitespace-pre-line mb-4 sm:mb-6 text-foreground min-h-[150px]">
-                                                    {answerText}
-                                                  </p>
-                                                  {!hasVoted && <Button onClick={() => handleVote(outputId)} className="w-full bg-primary hover:bg-primary/90 text-base py-5">
-                                                      <ThumbsUp className="h-4 w-4 mr-2" />
-                                                      Votar nesta resposta
-                                                    </Button>}
-                                                  {hasVoted && votedFor === outputId && (
-                                                    <div className="bg-primary/10 border-2 border-primary rounded-lg p-4 mt-4">
-                                                      <div className="flex items-center gap-3 mb-2">
-                                                        <Trophy className="h-6 w-6 text-primary" />
-                                                        <h4 className="text-xl font-bold text-primary">Parabéns!</h4>
-                                                      </div>
-                                                      <p className="text-base text-foreground">
-                                                        Você votou em: <span className="font-semibold">{subtitle}</span>
-                                                      </p>
-                                                    </div>
-                                                  )}
-                                                </CardContent>
-                                              </Card>;
-                                })}
-                                      </div>;
-                          } catch (err) {
-                            console.error("Error parsing response:", err);
-                            return <div className="bg-muted rounded-lg p-12 min-h-[300px]">
-                                        <p className="text-2xl leading-relaxed whitespace-pre-line">
-                                          {response.response}
-                                        </p>
-                                      </div>;
-                          }
-                        })()}
-                              </div>}
-                          </div>;
-                })}
-                  </div>
+                    return (
+                      <Card
+                        key={outputId}
+                        className={cn(
+                          "overflow-hidden border border-white/10 bg-white/5 backdrop-blur transition-all duration-300",
+                          "shadow-[0_30px_90px_-70px_rgba(79,70,229,0.6)] hover:border-primary/50 hover:shadow-[0_45px_120px_-70px_rgba(147,51,234,0.7)]",
+                          isWinner && "border-primary/60 bg-primary/15"
+                        )}
+                      >
+                        <CardHeader className="flex flex-col gap-3 border-b border-white/10 bg-white/5 p-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="space-y-1">
+                              <CardTitle className="text-lg font-semibold text-foreground sm:text-xl">
+                                Modelo {String.fromCharCode(65 + index)}
+                              </CardTitle>
+                              <p className="text-sm text-muted-foreground">{modelLabel}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sidebar-foreground/70">
+                              <Timer className="h-4 w-4 text-primary" />
+                              <span>{formatTime(durationMs)}</span>
+                            </div>
+                          </div>
+                          {isWinner && <Badge className="w-fit border border-primary/50 bg-primary/20 text-primary">Selecionado</Badge>}
+                          {isRunnerUp && <Badge className="w-fit border border-white/10 bg-white/5 text-muted-foreground">Não selecionado</Badge>}
+                        </CardHeader>
+                        <CardContent className="p-5">
+                          <p className="min-h-[150px] text-lg leading-relaxed whitespace-pre-line text-foreground sm:text-xl">
+                            {answerText}
+                          </p>
+                          {!hasVoted && (
+                            <Button
+                              onClick={() => handleVote(outputId)}
+                              className="mt-5 w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-5 text-base font-semibold text-primary-foreground shadow-[0_20px_50px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
+                            >
+                              <ThumbsUp className="mr-2 h-4 w-4" /> Votar nesta resposta
+                            </Button>
+                          )}
+                          {hasVoted && votedFor === outputId && (
+                            <div className="mt-5 rounded-2xl border border-primary/40 bg-primary/10 p-4">
+                              <div className="mb-2 flex items-center gap-3">
+                                <Trophy className="h-6 w-6 text-primary" />
+                                <h4 className="text-lg font-semibold text-primary">Seu voto contabilizado</h4>
+                              </div>
+                              <p className="text-sm text-foreground">
+                                Você escolheu <span className="font-medium">{modelLabel}</span> como melhor resposta.
+                              </p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
-              </div>)}
-          </div>
+              </div>
+            </section>
+          )}
 
-          {/* Input Area - Always at bottom */}
-          <div className="border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="max-w-6xl mx-auto p-3 sm:p-4 lg:p-6">
-              {/* Suggestions - only show when no results */}
-              {fastestResponses.length === 0 && <div className="mb-4">
-                  <p className="text-lg sm:text-xl text-muted-foreground mb-3">Sugestões de prompt:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-                    {promptSuggestions.map((suggestion, index) => <button key={index} onClick={() => setPrompt(suggestion)} className="text-left p-3 sm:p-4 rounded-lg border border-input bg-background hover:bg-muted transition-colors text-base sm:text-lg">
-                        {suggestion}
-                      </button>)}
-                  </div>
-                </div>}
-              
-              <div className="relative">
-                <Textarea placeholder="Pergunte qualquer coisa..." value={prompt} onChange={e => setPrompt(e.target.value)} className="min-h-[80px] sm:min-h-[100px] lg:min-h-[120px] text-base sm:text-lg resize-none pr-14 sm:pr-16 border-input bg-background" disabled={isRunning} onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  runArena();
-                }
-              }} />
-                
-                <Button onClick={runArena} disabled={isRunning || !prompt.trim()} className="absolute bottom-3 sm:bottom-4 right-3 sm:right-4 h-9 w-9 sm:h-10 sm:w-10 p-0 bg-primary hover:bg-primary/90">
-                  {isRunning ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <Send className="h-4 w-4 sm:h-5 sm:w-5" />}
-                </Button>
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_70px_-60px_rgba(147,51,234,0.6)] sm:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Sugestões</p>
+                <h3 className="text-lg font-semibold text-sidebar-foreground sm:text-xl">Comece com uma ideia pronta</h3>
+                <p className="text-sm text-muted-foreground">
+                  Escolha um prompt para testar rapidamente diferentes modelos na arena.
+                </p>
               </div>
             </div>
-          </div>
-          </div>
-        )}
+            <div className="mt-6 grid gap-3 md:grid-cols-2">
+              {promptSuggestions.map((suggestion, index) => (
+                <button
+                  key={`${suggestion}-${index}`}
+                  onClick={() => setPrompt(suggestion)}
+                  className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/0 px-4 py-4 text-left transition hover:border-primary/40 hover:bg-primary/10"
+                >
+                  <span className="text-sm font-medium text-sidebar-foreground transition group-hover:text-primary-foreground/90">
+                    {suggestion}
+                  </span>
+                  <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                    Usar
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
-    </div>;
-};
+
+      <div className="border-t border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.85),rgba(2,6,23,0.95))] backdrop-blur">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Envie um desafio</p>
+                <h3 className="text-lg font-semibold text-sidebar-foreground sm:text-xl">Compare respostas em segundos</h3>
+              </div>
+              {outputsCount > 0 && (
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+                  {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
+                </span>
+              )}
+            </div>
+            {fastestResponses.length === 0 && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Use um dos prompts sugeridos acima ou descreva seu próprio cenário no campo abaixo.
+              </p>
+            )}
+            <div className="relative mt-6">
+              <Textarea
+                placeholder="Pergunte qualquer coisa..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="min-h-[110px] resize-none rounded-2xl border border-white/10 bg-black/30 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[130px] lg:min-h-[150px]"
+                disabled={isRunning}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    runArena();
+                  }
+                }}
+              />
+
+              <Button
+                onClick={runArena}
+                disabled={isRunning || !prompt.trim()}
+                className="absolute bottom-5 right-5 h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-0 text-primary-foreground shadow-[0_25px_60px_-30px_rgba(147,51,234,0.8)] transition hover:from-primary/90 hover:to-accent"
+              >
+                {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export default ArenaInterface;
