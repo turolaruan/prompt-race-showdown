@@ -5,9 +5,7 @@ const LeaderboardPage = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <AppSidebar />
-      <main className="flex flex-1 flex-col">
-        <Leaderboard />
-      </main>
+      <Leaderboard />
     </div>
   );
 };

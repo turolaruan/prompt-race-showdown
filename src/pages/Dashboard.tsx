@@ -272,24 +272,6 @@ const Dashboard = () => {
     .sort((a, b) => b.accuracy_percent - a.accuracy_percent)
     .slice(0, 3);
 
-  const rankThemes = [
-    {
-      card: "border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_12px_35px_rgba(59,130,246,0.15)]",
-      circle: "bg-primary text-primary-foreground",
-      badge: "bg-primary text-primary-foreground",
-    },
-    {
-      card: "border-purple-500/35 bg-gradient-to-br from-purple-500/15 via-background to-background shadow-[0_10px_28px_rgba(168,85,247,0.12)]",
-      circle: "bg-purple-500 text-white",
-      badge: "bg-purple-500 text-white",
-    },
-    {
-      card: "border-indigo-500/35 bg-gradient-to-br from-indigo-500/15 via-background to-background shadow-[0_10px_24px_rgba(99,102,241,0.12)]",
-      circle: "bg-indigo-500 text-white",
-      badge: "bg-indigo-500 text-white",
-    },
-  ];
-
   const orderedBenchmarks = [...filteredBenchmarks].sort((a, b) => {
     const diff = (a.accuracy_percent ?? 0) - (b.accuracy_percent ?? 0);
     return rankingOrder === "desc" ? -diff : diff;
@@ -388,255 +370,166 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <AppSidebar />
-      <main className="relative flex-1 overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.22)_0%,rgba(17,24,39,0.92)_45%,rgba(3,7,18,1)_100%)]">
-        <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Dashboard</p>
-              <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Benchmark Center</h1>
-              <p className="text-sm text-muted-foreground">
-                Explore métricas, filtros e evolução dos modelos em diferentes tarefas.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleExport}
-                className="rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-primary/70 px-6 py-2 text-sm font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
-            </div>
+      <div className="flex-1 px-4 py-6 sm:px-6 lg:p-8">
+        <div className="mx-auto max-w-6xl space-y-8 xl:max-w-7xl">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Dashboard de Benchmarks</h1>
+            <p className="text-muted-foreground">Análise de performance dos modelos em diferentes tarefas</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button onClick={handleExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+            <BarChart3 className="h-12 w-12 text-primary" />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-            <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_-70px_rgba(147,51,234,0.6)] sm:p-10">
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-24 right-20 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
-                <div className="absolute bottom-0 left-0 h-64 w-64 rounded-full bg-accent/20 blur-3xl" />
-              </div>
-              <div className="relative grid gap-6 sm:grid-cols-3">
-                <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                      Total de Benchmarks
-                    </CardTitle>
-                    <Trophy className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{filteredBenchmarks.length}</div>
-                    <p className="text-xs text-muted-foreground">Resultados registrados após aplicar filtros</p>
-                  </CardContent>
-                </Card>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Benchmarks</CardTitle>
+              <Trophy className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{filteredBenchmarks.length}</div>
+              <p className="text-xs text-muted-foreground">Resultados registrados</p>
+            </CardContent>
+          </Card>
 
-                <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                      Score médio
-                    </CardTitle>
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{averageScore}</div>
-                    <p className="text-xs text-muted-foreground">Performance média considerando os resultados listados</p>
-                  </CardContent>
-                </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Score Médio</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{averageScore}</div>
+              <p className="text-xs text-muted-foreground">Média geral de performance</p>
+            </CardContent>
+          </Card>
 
-                <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                      Modelos avaliados
-                    </CardTitle>
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{uniqueModels.length}</div>
-                    <p className="text-xs text-muted-foreground">Diversidade de modelos presentes no recorte atual</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Modelos Avaliados</CardTitle>
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{uniqueModels.length}</div>
+              <p className="text-xs text-muted-foreground">Diferentes modelos</p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Top 3 Models */}
         {topModels.length > 0 && (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_32px_110px_-70px_rgba(147,51,234,0.6)] sm:p-8">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
-                  Destaques
-                </p>
-                <h2 className="text-lg font-semibold text-foreground sm:text-xl">Top 3 modelos filtrados</h2>
-                <p className="text-sm text-muted-foreground">
-                  Destaque dos modelos com maior acurácia considerando os filtros ativos.
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {topModels.map((model, index) => {
-                const modelName = resolveModelName(model);
-                const taskLabel = formatLabel(resolveTask(model));
-                const accuracy = formatNumber(model.accuracy_percent);
-                const benchmarkRaw = resolveBenchmark(model);
-                const techniqueRaw = resolveTechnique(model);
-                const benchmarkLabel =
-                  benchmarkRaw && benchmarkRaw !== "Benchmark desconhecido"
-                    ? formatLabel(benchmarkRaw)
-                    : null;
-                const techniqueLabel =
-                  techniqueRaw && techniqueRaw !== "Técnica desconhecida"
-                    ? techniqueRaw
-                    : null;
-                const runtimeLabel =
-                  typeof model.avg_seconds_per_example === "number" && Number.isFinite(model.avg_seconds_per_example)
-                    ? `${formatNumber(model.avg_seconds_per_example, 2)}s / exemplo`
-                    : null;
-                const theme = rankThemes[index] ?? rankThemes[rankThemes.length - 1];
-                const infoPills = [benchmarkLabel, techniqueLabel, runtimeLabel].filter(Boolean) as string[];
-                return (
-                  <div
-                    key={model.id}
-                    className={`flex h-full flex-col gap-4 rounded-2xl border bg-white/5 p-5 transition hover:-translate-y-1 ${theme.card}`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full text-base font-semibold shadow-md ${theme.circle}`}
-                        >
-                          {index + 1}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="max-w-[220px] truncate font-semibold text-foreground" title={modelName}>
-                            {modelName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{taskLabel}</p>
-                        </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 3 Modelos (Filtros Aplicados)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {topModels.map((model, index) => {
+                  const modelName = resolveModelName(model);
+                  const taskLabel = formatLabel(resolveTask(model));
+                  const accuracy = formatNumber(model.accuracy_percent);
+                  return (
+                    <div key={model.id} className="flex items-center gap-3 p-4 bg-muted rounded-lg">
+                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/20 text-primary font-bold">
+                        {index + 1}
                       </div>
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold shadow ${theme.badge}`}>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">{modelName}</p>
+                        <p className="text-sm text-muted-foreground">{taskLabel}</p>
+                      </div>
+                      <Badge variant="default">
                         {accuracy !== "—" ? `${accuracy}%` : "—"}
-                      </span>
+                      </Badge>
                     </div>
-
-                    {infoPills.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {infoPills.map(pill => (
-                          <span
-                            key={pill}
-                            className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-muted-foreground"
-                          >
-                            {pill}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-auto grid gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs uppercase tracking-wide text-muted-foreground">
-                      <div className="flex items-center justify-between">
-                        <span>Total</span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {typeof model.total === "number" ? model.total : "—"}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span>Corretas</span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {typeof model.correct === "number" ? model.correct : "—"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })} 
-            </div>
-          </section>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Filters */}
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_30px_100px_-70px_rgba(147,51,234,0.55)] sm:p-8">
-          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
-                Filtros avançados
-              </p>
-              <h3 className="text-lg font-semibold text-foreground sm:text-xl">
-                Refine a lista de benchmarks
-              </h3>
-            </div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="flex-1">
             <Select value={selectedTask} onValueChange={setSelectedTask}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por tarefa" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Tarefas</SelectItem>
                 {uniqueTasks.map(task => (
-                  <SelectItem key={task} value={task}>
-                    {task}
-                  </SelectItem>
+                  <SelectItem key={task} value={task}>{task}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="flex-1">
             <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por modelo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Modelos</SelectItem>
                 {uniqueModels.map(model => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
+                  <SelectItem key={model} value={model}>{model}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="flex-1">
             <Select value={selectedModelFamily} onValueChange={setSelectedModelFamily}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por família" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Famílias</SelectItem>
                 {uniqueModelFamilies.map(family => (
-                  <SelectItem key={family} value={family}>
-                    {family}
-                  </SelectItem>
+                  <SelectItem key={family} value={family}>{family}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="flex-1">
             <Select value={selectedTechnique} onValueChange={setSelectedTechnique}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por técnica" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas as Técnicas</SelectItem>
                 {uniqueTechniques.map(technique => (
-                  <SelectItem key={technique} value={technique}>
-                    {technique}
-                  </SelectItem>
+                  <SelectItem key={technique} value={technique}>{technique}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="flex-1">
             <Select value={selectedBenchmark} onValueChange={setSelectedBenchmark}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Filtrar por benchmark" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos os Benchmarks</SelectItem>
                 {uniqueBenchmarks.map(benchmark => (
-                  <SelectItem key={benchmark} value={benchmark}>
-                    {benchmark}
-                  </SelectItem>
+                  <SelectItem key={benchmark} value={benchmark}>{benchmark}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          <div className="flex-1">
             <Select value={rankingOrder} onValueChange={value => setRankingOrder(value as "asc" | "desc")}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger>
                 <SelectValue placeholder="Ordenar por ranking" />
               </SelectTrigger>
               <SelectContent>
@@ -645,36 +538,26 @@ const Dashboard = () => {
               </SelectContent>
             </Select>
           </div>
-        </section>
+        </div>
 
         {/* Benchmarks Table */}
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_32px_110px_-70px_rgba(147,51,234,0.58)] sm:p-8">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
-                Resultados detalhados
-              </p>
-              <h3 className="text-lg font-semibold text-foreground sm:text-xl">Benchmarks por modelo</h3>
-              <p className="text-sm text-muted-foreground">
-                Consulte métricas individuais, tempos de execução e classificações.
-              </p>
-            </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-muted-foreground">
-              {orderedBenchmarks.length} {orderedBenchmarks.length === 1 ? "registro" : "registros"}
-            </div>
-          </div>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-primary" />
-            </div>
-          ) : filteredBenchmarks.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <p>Nenhum benchmark encontrado.</p>
-              <p className="mt-2 text-sm">Faça upload de dados na página Admin.</p>
-            </div>
-          ) : (
-            <div className="grid gap-6">
-              {orderedBenchmarks.map(benchmark => {
+        <Card>
+          <CardHeader>
+            <CardTitle>Resultados de Benchmarks</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredBenchmarks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>Nenhum benchmark encontrado.</p>
+                <p className="text-sm mt-2">Faça upload de dados na página Admin.</p>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {orderedBenchmarks.map((benchmark) => {
                   const answerType = getPrimaryAnswerType(benchmark);
                   const scoreDisplay = formatNumber(benchmark.accuracy_percent);
                   const accuracyDisplay = scoreDisplay;
@@ -707,7 +590,7 @@ const Dashboard = () => {
                   return (
                     <div
                       key={benchmark.id}
-                      className="rounded-3xl border border-white/10 bg-white/5 p-6 transition-all hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_25px_90px_-60px_rgba(147,51,234,0.55)]"
+                      className="rounded-xl border border-border/60 bg-card/50 p-6 shadow-sm transition-shadow hover:shadow-md"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-1">
@@ -720,17 +603,11 @@ const Dashboard = () => {
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {techniqueLabel && techniqueLabel !== "Técnica desconhecida" && (
-                            <Badge
-                              variant="outline"
-                              className="rounded-full border-white/20 bg-white/10 text-xs uppercase tracking-wide text-muted-foreground"
-                            >
+                            <Badge variant="secondary" className="text-xs uppercase tracking-wide">
                               {techniqueLabel}
                             </Badge>
                           )}
-                          <Badge
-                            variant="secondary"
-                            className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-lg font-semibold text-primary"
-                          >
+                          <Badge variant="default" className="text-lg px-3 py-1 font-semibold">
                             {scoreDisplay !== "—" ? `${scoreDisplay}%` : "Score não disponível"}
                           </Badge>
                         </div>
@@ -765,7 +642,7 @@ const Dashboard = () => {
                       <div className="mt-6 grid gap-6 md:grid-cols-2">
                         <div className="space-y-3">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
                               <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
                                 <Activity className="h-3.5 w-3.5" />
                                 Accuracy
@@ -774,7 +651,7 @@ const Dashboard = () => {
                                 {accuracyDisplay !== "—" ? `${accuracyDisplay}%` : "—"}
                               </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
                               <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
                                 <Trophy className="h-3.5 w-3.5" />
                                 Acertos
@@ -789,7 +666,7 @@ const Dashboard = () => {
                           </div>
 
                           {answerType && (
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
                               <p className="text-xs font-medium uppercase text-muted-foreground">
                                 {formatLabel(answerType.label)} (por tipo de resposta)
                               </p>
@@ -815,14 +692,14 @@ const Dashboard = () => {
 
                         <div className="space-y-3">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
                               <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
                                 <Timer className="h-3.5 w-3.5" />
                                 Tempo total
                               </p>
                               <p className="mt-2 text-lg font-semibold text-foreground">{runtimeDisplay}</p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="rounded-lg border border-border/60 bg-background/60 p-4">
                               <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
                                 <Timer className="h-3.5 w-3.5" />
                                 Tempo / exemplo
@@ -835,14 +712,14 @@ const Dashboard = () => {
                       </div>
                     </div>
                   );
-                })} 
-            </div>
-          )}
-        </section>
-        </div>
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-      </main>
     </div>
+  </div>
   );
 };
 
