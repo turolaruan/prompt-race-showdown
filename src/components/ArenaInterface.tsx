@@ -65,8 +65,6 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     "Explique a teoria da relatividade de Einstein",
     "Como funciona o algoritmo de ordenação quicksort?",
   ];
-  const heroModels = ["Gemini Pro", "Claude 3", "GPT-5", "DeepSeek", "LLaMA 3", "Mixtral"];
-
   useEffect(() => {
     if (!currentChatId) return;
     const target = chatHistory.find(chat => chat.id === currentChatId);
@@ -345,9 +343,14 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     <div className="relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.45em] text-primary/70">Arena</p>
-            <h2 className="text-base font-semibold text-sidebar-foreground">Comparador de Modelos</h2>
+          <div className="flex-1 min-w-[260px] space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
+            <h1 className="text-lg font-semibold text-foreground sm:text-xl">
+              Encontre a melhor IA para você
+            </h1>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              Faça perguntas, compare respostas entre modelos e registre seu feedback.
+            </p>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 shadow-[0_18px_40px_-25px_rgba(147,51,234,0.8)]">
             <Label htmlFor="mock-mode" className="text-sm font-medium text-sidebar-foreground">
@@ -360,45 +363,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-          {!hasAnyResponses ? (
-            <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-[linear-gradient(145deg,rgba(147,51,234,0.22),rgba(59,130,246,0.12)_45%,rgba(15,23,42,0.55))] px-6 py-14 sm:px-10 shadow-[0_40px_120px_-60px_rgba(79,70,229,0.6)]">
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-24 left-16 h-56 w-56 rounded-full bg-primary/25 blur-3xl" />
-                <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-accent/15 blur-3xl" />
-              </div>
-              <div className="relative flex flex-col items-center gap-10 text-center">
-                <div className="flex flex-wrap justify-center gap-3">
-                  {heroModels.map(model => (
-                    <span
-                      key={model}
-                      className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-semibold text-sidebar-foreground shadow-[0_20px_50px_-30px_rgba(147,51,234,0.7)]"
-                    >
-                      {model.charAt(0)}
-                    </span>
-                  ))}
-                </div>
-                <div className="space-y-4 sm:space-y-6">
-                  <h1 className="text-balance text-4xl font-bold text-foreground sm:text-6xl lg:text-7xl">
-                    Encontre a melhor IA para você
-                  </h1>
-                  <p className="mx-auto max-w-3xl text-balance text-base text-muted-foreground sm:text-lg">
-                    Faça perguntas, compare respostas entre modelos e registre seu feedback para evoluir a comunidade.
-                  </p>
-                </div>
-                <div className="grid gap-3 text-left text-sm text-sidebar-foreground/90 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
-                    🔮 Benchmarks em tempo real
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
-                    🧪 Experimente modos mock ou endpoint real
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-inner">
-                    🏆 Escolha o modelo com melhor resposta
-                  </div>
-                </div>
-              </div>
-            </section>
-          ) : isProcessing ? (
+          {!hasAnyResponses ? null : isProcessing ? (
             <section className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-primary/25 bg-white/5 text-center shadow-[0_40px_120px_-70px_rgba(147,51,234,0.6)]">
               <Loader2 className="h-14 w-14 animate-spin text-primary" />
               <p className="mt-6 text-lg font-semibold text-foreground">Processando respostas...</p>
@@ -510,12 +475,12 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 <button
                   key={`${suggestion}-${index}`}
                   onClick={() => setPrompt(suggestion)}
-                  className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/0 px-4 py-4 text-left transition hover:border-primary/40 hover:bg-primary/10"
+                  className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/0 px-4 py-4 text-left text-sidebar-foreground transition-colors hover:border-primary/40 hover:bg-primary/15 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:bg-primary/20 active:text-white"
                 >
-                  <span className="text-sm font-medium text-sidebar-foreground transition group-hover:text-primary-foreground/90">
+                  <span className="text-sm font-medium transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
                     {suggestion}
                   </span>
-                  <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition group-hover:bg-primary group-hover:text-primary-foreground group-active:bg-primary group-active:text-primary-foreground group-focus:bg-primary group-focus:text-primary-foreground">
                     Usar
                   </span>
                 </button>
