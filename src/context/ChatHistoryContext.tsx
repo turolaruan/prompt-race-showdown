@@ -1,17 +1,35 @@
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from "react";
 
+export interface ChatTurnOutput {
+  id: string;
+  modelId: string;
+  modelName: string;
+  response: string;
+  responseTimeMs: number;
+}
+
+export interface ChatTurn {
+  id: string;
+  prompt: string;
+  timestamp: string;
+  outputs: ChatTurnOutput[];
+}
+
 export interface ChatHistoryEntry {
   id: string;
   prompt: string;
   timestamp: string;
+  updatedAt: string;
   winner?: string;
+  turns: ChatTurn[];
 }
 
 interface ChatHistoryContextValue {
   history: ChatHistoryEntry[];
   currentChatId: string | null;
   addChat: (prompt: string) => string;
-  updateChat: (id: string, updates: Partial<Omit<ChatHistoryEntry, "id">>) => void;
+  updateChat: (id: string, updates: Partial<Omit<ChatHistoryEntry, "id" | "turns">>) => void;
+  appendTurn: (id: string, turn: ChatTurn) => void;
   setCurrentChat: (id: string | null) => void;
   clearHistory: () => void;
 }
@@ -33,9 +51,31 @@ const readStorage = <T,>(key: string, fallback: T): T => {
 };
 
 export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
-  const [history, setHistory] = useState<ChatHistoryEntry[]>(() =>
-    readStorage<ChatHistoryEntry[]>(HISTORY_STORAGE_KEY, [])
-  );
+  const normalizeHistory = useCallback((entries: ChatHistoryEntry[]): ChatHistoryEntry[] => {
+    return entries.map(entry => {
+      const timestamp = entry?.timestamp ?? new Date().toISOString();
+      const updatedAt = entry?.updatedAt ?? timestamp;
+      const turns = Array.isArray(entry?.turns)
+        ? entry.turns.map(turn => ({
+            ...turn,
+            outputs: Array.isArray(turn.outputs) ? turn.outputs : [],
+          }))
+        : [];
+      return {
+        id: entry.id,
+        prompt: entry.prompt ?? "",
+        timestamp,
+        updatedAt,
+        winner: entry.winner,
+        turns,
+      };
+    });
+  }, []);
+
+  const [history, setHistory] = useState<ChatHistoryEntry[]>(() => {
+    const stored = readStorage<ChatHistoryEntry[]>(HISTORY_STORAGE_KEY, []);
+    return normalizeHistory(stored);
+  });
   const [currentChatId, setCurrentChatId] = useState<string | null>(() =>
     readStorage<string | null>(CURRENT_CHAT_STORAGE_KEY, null)
   );
@@ -54,28 +94,66 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [currentChatId]);
 
+  const sortHistory = useCallback((entries: ChatHistoryEntry[]) => {
+    return [...entries].sort((a, b) => {
+      const aTime = new Date(a.updatedAt ?? a.timestamp).getTime();
+      const bTime = new Date(b.updatedAt ?? b.timestamp).getTime();
+      return bTime - aTime;
+    });
+  }, []);
+
   const addChat = useCallback<ChatHistoryContextValue["addChat"]>((prompt) => {
     const id =
       (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
+    const timestamp = new Date().toISOString();
     const entry: ChatHistoryEntry = {
       id,
       prompt,
-      timestamp: new Date().toISOString(),
+      timestamp,
+      updatedAt: timestamp,
+      winner: undefined,
+      turns: [],
     };
 
-    setHistory((prev) => [entry, ...prev]);
+    setHistory((prev) => sortHistory([entry, ...prev]));
     setCurrentChatId(id);
     return id;
-  }, []);
+  }, [sortHistory]);
 
   const updateChat = useCallback<ChatHistoryContextValue["updateChat"]>((id, updates) => {
-    setHistory((prev) =>
-      prev.map((entry) => (entry.id === id ? { ...entry, ...updates } : entry))
-    );
-  }, []);
+    const resolvedUpdates = { ...updates } as Partial<ChatHistoryEntry>;
+    if (updates.prompt || updates.winner) {
+      resolvedUpdates.updatedAt = new Date().toISOString();
+    }
+    setHistory((prev) => {
+      const mapped = prev.map((entry) =>
+        entry.id === id ? { ...entry, ...resolvedUpdates } : entry
+      );
+      return sortHistory(mapped);
+    });
+  }, [sortHistory]);
+
+  const appendTurn = useCallback<ChatHistoryContextValue["appendTurn"]>((id, turn) => {
+    const storedTurn: ChatTurn = {
+      ...turn,
+      outputs: Array.isArray(turn.outputs) ? [...turn.outputs] : [],
+    };
+    setHistory(prev => {
+      const next = prev.map(entry => {
+        if (entry.id !== id) return entry;
+        return {
+          ...entry,
+          prompt: turn.prompt,
+          updatedAt: turn.timestamp,
+          turns: [...entry.turns, storedTurn],
+        };
+      });
+      return sortHistory(next);
+    });
+  }, [sortHistory]);
 
   const clearHistory = useCallback(() => {
     setHistory([]);
@@ -88,10 +166,11 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
       currentChatId,
       addChat,
       updateChat,
+      appendTurn,
       setCurrentChat: setCurrentChatId,
       clearHistory,
     }),
-    [history, currentChatId, addChat, updateChat, clearHistory]
+    [history, currentChatId, addChat, updateChat, appendTurn, clearHistory]
   );
 
   return <ChatHistoryContext.Provider value={value}>{children}</ChatHistoryContext.Provider>;

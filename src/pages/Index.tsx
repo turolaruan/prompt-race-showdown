@@ -1,13 +1,17 @@
 import { useRef } from "react";
 import ArenaInterface, { ArenaInterfaceHandle } from "@/components/ArenaInterface";
 import AppSidebar from "@/components/AppSidebar";
+import { useSidebar } from "@/context/SidebarContext";
 
 const Index = () => {
   const arenaRef = useRef<ArenaInterfaceHandle>(null);
+  const { collapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
 
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <AppSidebar
+        collapsed={isSidebarCollapsed}
+        onToggle={toggleSidebar}
         onStartNewChat={() => arenaRef.current?.startNewChat()}
         onSelectChat={chat => arenaRef.current?.loadChat(chat)}
       />

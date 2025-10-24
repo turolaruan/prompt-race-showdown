@@ -8,6 +8,7 @@ import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu
 import AppSidebar from "@/components/AppSidebar";
 import { BenchmarkDetails, AnswerTypeStats } from "@/lib/mockBenchmarks";
 import evalResultsArray from "../../eval_results_array.json";
+import { useSidebar } from "@/context/SidebarContext";
 
 interface EvalResultTask {
   total?: number;
@@ -164,6 +165,7 @@ const normalizeEvalResults = (data: EvalResultsFile): BenchmarkDetails[] => {
 };
 
 const Dashboard = () => {
+  const { collapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
   const [benchmarks, setBenchmarks] = useState<BenchmarkDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<string>("all");
@@ -387,7 +389,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-      <AppSidebar />
+      <AppSidebar collapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <main className="relative flex-1 overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.22)_0%,rgba(17,24,39,0.92)_45%,rgba(3,7,18,1)_100%)]">
         <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
