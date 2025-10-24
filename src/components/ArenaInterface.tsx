@@ -195,8 +195,13 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       const apiResponse = useMockData
         ? await generateMockResponse(currentPrompt)
         : await sendPromptToEndpoint(currentPrompt);
+      console.log("API TCC response:", apiResponse);
       const totalDuration = Math.round(now() - requestStart);
-      const results = Array.isArray(apiResponse?.results) ? apiResponse.results : [];
+      const results = Array.isArray(apiResponse)
+        ? apiResponse
+        : Array.isArray(apiResponse?.results)
+          ? apiResponse.results
+          : [];
       if (results.length === 0) {
         throw new Error("Nenhuma resposta retornada pela API TCC.");
       }
