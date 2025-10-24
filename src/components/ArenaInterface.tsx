@@ -125,7 +125,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         ? baseWithoutTrailingSlash.endsWith("/infer")
           ? baseWithoutTrailingSlash
           : `${baseWithoutTrailingSlash}/infer`
-        : "https://gbcsrt.share.zrok.io/infer";
+        : "http://localhost:8000/infer";
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
