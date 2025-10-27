@@ -9,6 +9,7 @@ import AppSidebar from "@/components/AppSidebar";
 import { BenchmarkDetails, AnswerTypeStats } from "@/lib/mockBenchmarks";
 import evalResultsArray from "../../eval_results_array.json";
 import { useSidebar } from "@/context/SidebarContext";
+import { cn } from "@/lib/utils";
 
 interface EvalResultTask {
   total?: number;
@@ -297,19 +298,22 @@ const Dashboard = () => {
 
   const rankThemes = [
     {
-      card: "border-primary/40 bg-gradient-to-br from-primary/15 via-background to-background shadow-[0_12px_35px_rgba(59,130,246,0.15)]",
-      circle: "bg-primary text-primary-foreground",
-      badge: "bg-primary text-primary-foreground",
+      card: "border-primary/50 bg-gradient-to-br from-primary/20 via-primary/5 to-background/90 shadow-[0_42px_140px_-80px_rgba(147,51,234,0.55)]",
+      glow: "bg-primary/45",
+      circle: "bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white",
+      badge: "bg-gradient-to-r from-fuchsia-400 via-fuchsia-500 to-purple-500 text-white shadow-[0_18px_48px_-28px_rgba(236,72,153,0.6)]",
     },
     {
-      card: "border-purple-500/35 bg-gradient-to-br from-purple-500/15 via-background to-background shadow-[0_10px_28px_rgba(168,85,247,0.12)]",
-      circle: "bg-purple-500 text-white",
-      badge: "bg-purple-500 text-white",
+      card: "border-purple-500/45 bg-gradient-to-br from-purple-500/18 via-indigo-500/10 to-background/95 shadow-[0_38px_130px_-85px_rgba(168,85,247,0.5)]",
+      glow: "bg-purple-400/45",
+      circle: "bg-gradient-to-br from-purple-500 to-indigo-500 text-white",
+      badge: "bg-gradient-to-r from-purple-400 via-purple-500 to-indigo-500 text-white/90 shadow-[0_16px_44px_-26px_rgba(168,85,247,0.5)]",
     },
     {
-      card: "border-indigo-500/35 bg-gradient-to-br from-indigo-500/15 via-background to-background shadow-[0_10px_24px_rgba(99,102,241,0.12)]",
-      circle: "bg-indigo-500 text-white",
-      badge: "bg-indigo-500 text-white",
+      card: "border-indigo-500/45 bg-gradient-to-br from-indigo-500/18 via-blue-500/10 to-background/95 shadow-[0_34px_120px_-85px_rgba(59,130,246,0.45)]",
+      glow: "bg-indigo-400/45",
+      circle: "bg-gradient-to-br from-indigo-500 to-blue-500 text-white",
+      badge: "bg-gradient-to-r from-indigo-400 via-blue-500 to-cyan-500 text-white/90 shadow-[0_14px_36px_-24px_rgba(59,130,246,0.45)]",
     },
   ];
 
@@ -429,7 +433,17 @@ const Dashboard = () => {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return "—";
     }
-    return value.toFixed(fractionDigits);
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(value);
+  };
+
+  const formatPercentage = (value?: number | null) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return `${formatNumber(value, 2)}%`;
   };
 
   const formatLabel = (value?: string | null, fallback = "—") => {
@@ -462,7 +476,7 @@ const Dashboard = () => {
       <AppSidebar collapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <main className="relative flex-1 overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.22)_0%,rgba(17,24,39,0.92)_45%,rgba(3,7,18,1)_100%)]">
         <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[110rem] flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-10 lg:px-12">
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Dashboard</p>
               <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Benchmark Center</h1>
@@ -483,7 +497,7 @@ const Dashboard = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-8 px-6 py-8 sm:px-10 lg:px-12">
             <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_-70px_rgba(147,51,234,0.6)] sm:p-10">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute -top-24 right-20 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
@@ -533,8 +547,12 @@ const Dashboard = () => {
 
         {/* Top 3 Models */}
         {topModels.length > 0 && (
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_32px_110px_-70px_rgba(147,51,234,0.6)] sm:p-8">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/10 via-background/85 to-background p-6 shadow-[0_40px_120px_-70px_rgba(147,51,234,0.6)] sm:p-8">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -top-24 right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
+              <div className="absolute bottom-[-35%] left-[-15%] h-72 w-72 rounded-full bg-accent/15 blur-[120px]" />
+            </div>
+            <div className="relative mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
                   Destaques
@@ -545,11 +563,11 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="relative grid grid-cols-1 gap-5 md:grid-cols-3">
               {topModels.map((model, index) => {
                 const modelName = resolveModelName(model);
                 const taskLabel = formatLabel(resolveTask(model));
-                const accuracy = formatNumber(model.accuracy_percent);
+                const accuracyLabel = formatPercentage(model.accuracy_percent);
                 const benchmarkRaw = resolveBenchmark(model);
                 const techniqueRaw = resolveTechnique(model);
                 const benchmarkLabel =
@@ -566,60 +584,83 @@ const Dashboard = () => {
                     : null;
                 const theme = rankThemes[index] ?? rankThemes[rankThemes.length - 1];
                 const infoPills = [benchmarkLabel, techniqueLabel, runtimeLabel].filter(Boolean) as string[];
+                const cardKey = model.id ?? `${modelName}-${index}`;
                 return (
                   <div
-                    key={model.id}
-                    className={`flex h-full flex-col gap-4 rounded-2xl border bg-white/5 p-5 transition hover:-translate-y-1 ${theme.card}`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`flex h-10 w-10 items-center justify-center rounded-full text-base font-semibold shadow-md ${theme.circle}`}
-                        >
-                          {index + 1}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="max-w-[220px] truncate font-semibold text-foreground" title={modelName}>
-                            {modelName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{taskLabel}</p>
-                        </div>
-                      </div>
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold shadow ${theme.badge}`}>
-                        {accuracy !== "—" ? `${accuracy}%` : "—"}
-                      </span>
-                    </div>
-
-                    {infoPills.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {infoPills.map(pill => (
-                          <span
-                            key={pill}
-                            className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-muted-foreground"
-                          >
-                            {pill}
-                          </span>
-                        ))}
-                      </div>
+                    key={cardKey}
+                    className={cn(
+                      "group relative flex h-full flex-col overflow-hidden rounded-[32px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_48px_140px_-80px_rgba(147,51,234,0.55)]",
+                      theme.card
                     )}
-
-                    <div className="mt-auto grid gap-2 rounded-xl border border-white/10 bg-white/5 p-3 text-xs uppercase tracking-wide text-muted-foreground">
-                      <div className="flex items-center justify-between">
-                        <span>Total</span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {typeof model.total === "number" ? model.total : "—"}
+                  >
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className={cn("absolute -top-24 right-12 h-56 w-56 rounded-full blur-3xl opacity-80", theme.glow)} />
+                      <div className="absolute bottom-[-30%] left-[-15%] h-64 w-64 rounded-full bg-white/10 blur-[120px]" />
+                    </div>
+                    <div className="relative flex flex-1 flex-col gap-5">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "flex h-12 w-12 items-center justify-center rounded-full text-base font-semibold text-white shadow-[0_20px_45px_-20px_rgba(236,72,153,0.7)]",
+                              theme.circle
+                            )}
+                          >
+                            {index + 1}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="max-w-[220px] truncate text-lg font-semibold text-foreground" title={modelName}>
+                              {modelName}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{taskLabel}</p>
+                          </div>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex min-w-[82px] items-center justify-center rounded-full px-3 py-1 text-sm font-semibold leading-none text-white shadow-[0_20px_48px_-28px_rgba(236,72,153,0.55)]",
+                            theme.badge
+                          )}
+                        >
+                          {accuracyLabel}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span>Corretas</span>
-                        <span className="text-sm font-semibold text-foreground">
-                          {typeof model.correct === "number" ? model.correct : "—"}
-                        </span>
+
+                      {infoPills.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {infoPills.map(pill => (
+                            <Badge
+                              key={pill}
+                              variant="outline"
+                              className="border-white/15 bg-white/10 px-3 py-[6px] text-[11px] font-semibold text-foreground/85 backdrop-blur-sm"
+                            >
+                              {pill}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-auto grid gap-2 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                            Total
+                          </span>
+                          <span className="text-lg font-semibold text-foreground">
+                            {typeof model.total === "number" ? model.total : "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                            Corretas
+                          </span>
+                          <span className="text-lg font-semibold text-foreground">
+                            {typeof model.correct === "number" ? model.correct : "—"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
-              })} 
+              })}
             </div>
           </section>
         )}
