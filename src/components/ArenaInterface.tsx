@@ -441,16 +441,324 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     [startNewChat, loadChatFromHistory]
   );
 
+
   const turnsForDisplay = useMemo(() => [...conversation].reverse(), [conversation]);
   const hasAnyResponses = conversation.length > 0;
-  const currentPromptLabel = latestTurn?.prompt ?? pendingPrompt ?? "";
   const outputsCount = latestOutputs.length;
   const isProcessing = isRunning;
+  const hasPromptInteraction = hasAnyResponses || isProcessing || Boolean(pendingPrompt);
+
+  const renderResultsSections = () => (
+    <>
+      {isProcessing && pendingPrompt && (
+        <section className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background/85 to-background shadow-[0_50px_140px_-80px_rgba(147,51,234,0.6)]">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+            <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
+          </div>
+          <div className="relative space-y-6 p-6 sm:p-10">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Processando</p>
+                <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Gerando respostas...</h2>
+                <p className="max-w-3xl text-sm text-muted-foreground">
+                  Prompt enviado:{" "}
+                  <span className="font-medium text-primary/85">{pendingPrompt}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-center">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <p className="mt-4 text-base font-semibold text-foreground">Consultando modelos...</p>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                Estamos analisando as respostas dos modelos selecionados. Isso pode levar alguns segundos.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {turnsForDisplay.map((turn, index) => {
+        const isLatest = index === 0;
+        const turnOutputs = Array.isArray(turn.outputs) ? turn.outputs : [];
+        const turnOutputsCount = turnOutputs.length;
+        const turnDate = new Date(turn.timestamp).toLocaleString();
+        const storedWinner = getWinnerInfoForTurn(turn);
+        const fallbackLatestWinnerId =
+          !storedWinner.outputId && isLatest && hasVoted ? votedFor : null;
+        const fallbackLatestWinnerName = (() => {
+          if (storedWinner.modelName || !isLatest || !fallbackLatestWinnerId) return null;
+          const fallbackOutput = outputsById[fallbackLatestWinnerId];
+          if (!fallbackOutput) return null;
+          return (
+            fallbackOutput.modelName ||
+            getModelDisplayName(fallbackOutput.modelId)
+          );
+        })();
+        const resolvedWinnerOutputId = storedWinner.outputId ?? fallbackLatestWinnerId;
+        const resolvedWinnerModelName =
+          storedWinner.modelName ?? fallbackLatestWinnerName ?? null;
+        const hasResolvedWinner = Boolean(resolvedWinnerOutputId);
+        return (
+          <section
+            key={turn.id}
+            className={cn(
+              "relative overflow-hidden rounded-3xl border bg-gradient-to-br shadow-[0_40px_120px_-80px_rgba(147,51,234,0.55)]",
+              isLatest
+                ? "border-primary/30 from-primary/10 via-background/85 to-background"
+                : "border-white/10 from-background/80 via-background/95 to-background"
+            )}
+          >
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
+              <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/8 blur-3xl" />
+            </div>
+            <div className="relative space-y-12 p-6 sm:p-12">
+              <div className="flex flex-wrap items-start justify-between gap-6 rounded-3xl border border-white/10 bg-white/5/60 px-6 py-5 shadow-[0_35px_90px_-65px_rgba(147,51,234,0.65)] backdrop-blur-lg">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
+                    <span className={cn(isLatest ? "text-primary/70" : "text-muted-foreground/70")}>
+                      {isLatest ? "Resultado atual" : "Histórico"}
+                    </span>
+                    <span className="text-muted-foreground/60">•</span>
+                    <span className="text-muted-foreground/60">{turnDate}</span>
+                  </div>
+                  <h2 className="text-2xl font-semibold text-foreground sm:text-3xl md:text-[34px]">
+                    Comparativo de Respostas
+                  </h2>
+                  <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
+                    Prompt analisado:{" "}
+                    <span className="font-medium text-primary/85">{turn.prompt}</span>
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    "rounded-full border px-4 py-2 text-sm font-semibold",
+                    isLatest
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : "border-white/10 bg-white/5 text-muted-foreground/80"
+                  )}
+                >
+                  {turnOutputsCount} {turnOutputsCount === 1 ? "resposta" : "respostas"}
+                </div>
+              </div>
+
+              <div className="relative mx-auto flex h-6 w-full items-center justify-center">
+                <div className="h-px w-full rounded-full bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
+                <div className="pointer-events-none absolute right-[10%] top-1/2 h-px w-24 -translate-y-1/2 rotate-[2deg] bg-gradient-to-r from-transparent via-primary/25 to-transparent opacity-70" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-10 xl:grid-cols-2">
+                {turnOutputs.map((item, turnIndex) => {
+                  const outputId = item.id;
+                  const modelLabel = item.modelName || getModelDisplayName(item.modelId);
+                  const isWinner = hasResolvedWinner && resolvedWinnerOutputId === outputId;
+                  const isRunnerUp = hasResolvedWinner && resolvedWinnerOutputId !== outputId;
+                  const answerText =
+                    item.response && item.response.length > 0
+                      ? item.response.trim()
+                      : "Resposta não disponível";
+                  const durationMs = Number.isFinite(item.responseTimeMs) ? item.responseTimeMs : 0;
+
+                  const accentGradient = isWinner
+                    ? "from-primary/95 via-primary/70 to-accent/80"
+                    : "from-white/40 via-white/15 to-transparent";
+
+                  return (
+                    <Card
+                      key={outputId}
+                      className={cn(
+                        "relative flex h-full flex-col overflow-hidden rounded-[30px] border border-white/15 bg-white/10/80 backdrop-blur-xl transition-all duration-300",
+                        isLatest
+                          ? "shadow-[0_35px_110px_-70px_rgba(79,70,229,0.6)] hover:border-primary/50 hover:shadow-[0_45px_130px_-70px_rgba(147,51,234,0.7)]"
+                          : "shadow-[0_28px_80px_-70px_rgba(79,70,229,0.35)]",
+                        isWinner && "border-primary/60 bg-primary/20 shadow-[0_45px_140px_-80px_rgba(147,51,234,0.85)]"
+                      )}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "pointer-events-none absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b",
+                          accentGradient
+                        )}
+                      />
+                      <CardHeader className="flex flex-col gap-3 border-b border-white/10 bg-white/5/70 p-7 pb-5">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="space-y-1">
+                            <CardTitle className="text-2xl font-semibold text-foreground sm:text-[28px]">
+                              Modelo {String.fromCharCode(65 + turnIndex)}
+                            </CardTitle>
+                            <p className="text-sm text-muted-foreground">{modelLabel}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-sidebar-foreground/70">
+                            <Timer className="h-4 w-4 text-primary" />
+                            <span className="tracking-wide">{formatTime(durationMs)}</span>
+                          </div>
+                        </div>
+                        {isWinner && (
+                          <Badge className="w-fit border border-primary/50 bg-primary/20 text-primary">
+                            Selecionado
+                          </Badge>
+                        )}
+                        {isRunnerUp && (
+                          <Badge className="w-fit border border-white/10 bg-white/5 text-muted-foreground">
+                            Não selecionado
+                          </Badge>
+                        )}
+                      </CardHeader>
+                      <CardContent className="flex flex-1 flex-col p-0">
+                        <div className="flex-1 space-y-8 border-b border-white/10 px-7 pb-7 pt-7">
+                          <p className="whitespace-pre-line text-xl leading-relaxed text-foreground sm:text-[22px] md:text-[24px]">
+                            {answerText}
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-5 px-7 pb-7 pt-6">
+                          {isLatest && !hasResolvedWinner && (
+                            <Button
+                              onClick={() => handleVote(outputId)}
+                              className="w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-4 text-base font-semibold text-primary-foreground shadow-[0_20px_55px_-25px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
+                            >
+                              <ThumbsUp className="mr-2 h-4 w-4" /> Votar nesta resposta
+                            </Button>
+                          )}
+                          {hasResolvedWinner && resolvedWinnerOutputId === outputId && (
+                            <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4">
+                              <div className="mb-2 flex items-center gap-3">
+                                <Trophy className="h-6 w-6 text-primary" />
+                                <h4 className="text-lg font-semibold text-primary">Seu voto contabilizado</h4>
+                              </div>
+                              <p className="text-sm text-foreground">
+                                Você escolheu{" "}
+                                <span className="font-medium">
+                                  {resolvedWinnerModelName ?? modelLabel}
+                                </span>{" "}
+                                como melhor resposta.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
+
+  const renderPromptSection = (isDocked: boolean) => (
+    <section
+      className={cn(
+        "relative w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6",
+        isDocked && "border-white/20 bg-background/90 shadow-[0_30px_90px_-50px_rgba(147,51,234,0.75)] backdrop-blur-xl"
+      )}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Envie um desafio</p>
+          <h3 className="text-lg font-semibold text-sidebar-foreground sm:text-xl">Compare respostas em segundos</h3>
+        </div>
+        {outputsCount > 0 && (
+          <span className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+            {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
+          </span>
+        )}
+      </div>
+      {!hasAnyResponses && !isProcessing && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          Clique no botão de ideias para acessar sugestões ou descreva seu próprio cenário no campo abaixo.
+        </p>
+      )}
+      <div className="relative mt-6">
+        {showSuggestions && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity"
+              onClick={() => setShowSuggestions(false)}
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
+              <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-[#1b1242]/95 via-[#090e28]/96 to-[#040817]/98 p-6 shadow-[0_45px_160px_-70px_rgba(147,51,234,0.95)] backdrop-blur-2xl">
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(false)}
+                  aria-label="Fechar sugestões"
+                  className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-muted-foreground transition hover:border-primary/40 hover:bg-primary/25 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="flex flex-col gap-2 pr-10">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary/60">
+                    Sugestões
+                  </p>
+                  <h4 className="text-2xl font-semibold text-foreground">Precisa de inspiração rápida?</h4>
+                  <p className="text-sm text-muted-foreground/80">
+                    Selecione um dos prompts abaixo para preencher o campo automaticamente e iniciar um desafio.
+                  </p>
+                </div>
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {promptSuggestions.map((suggestion, index) => (
+                    <button
+                      key={`${suggestion}-${index}`}
+                      type="button"
+                      onClick={() => {
+                        setPrompt(suggestion);
+                        setShowSuggestions(false);
+                      }}
+                      className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-sm text-foreground transition-all hover:border-primary/60 hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
+                    >
+                      <span className="font-medium leading-snug transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
+                        {suggestion}
+                      </span>
+                      <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                        Usar
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+        <Textarea
+          placeholder="Pergunte qualquer coisa..."
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="min-h-[110px] resize-none rounded-2xl border border-white/10 bg-black/30 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[130px] lg:min-h-[150px]"
+          disabled={isRunning}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              runArena();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setShowSuggestions(prev => !prev)}
+          aria-label={showSuggestions ? "Ocultar sugestões" : "Mostrar sugestões"}
+          className="absolute bottom-5 right-20 flex h-12 w-12 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary shadow-[0_15px_40px_-25px_rgba(147,51,234,0.8)] transition hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 sm:right-24"
+        >
+          {showSuggestions ? <X className="h-5 w-5" /> : <Lightbulb className="h-5 w-5" />}
+        </button>
+
+        <Button
+          onClick={runArena}
+          disabled={isRunning || !prompt.trim()}
+          className="absolute bottom-5 right-5 h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-0 text-primary-foreground shadow-[0_25px_60px_-30px_rgba(147,51,234,0.8)] transition hover:from-primary/90 hover:to-accent"
+        >
+          {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+        </Button>
+      </div>
+    </section>
+  );
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-[98rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
           <div className="flex-1 min-w-[260px] space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
             <h1 className="text-lg font-semibold text-foreground sm:text-xl">
@@ -469,295 +777,39 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div
-          className={cn(
-            "mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:px-6 lg:px-8",
-            !hasAnyResponses && "min-h-[70vh] justify-center"
-          )}
-        >
-          {isProcessing && pendingPrompt && (
-            <section className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background/85 to-background shadow-[0_50px_140px_-80px_rgba(147,51,234,0.6)]">
-              <div className="pointer-events-none absolute inset-0">
-                <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
-                <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/10 blur-3xl" />
-              </div>
-              <div className="relative space-y-6 p-6 sm:p-10">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Processando</p>
-                    <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Gerando respostas...</h2>
-                    <p className="max-w-3xl text-sm text-muted-foreground">
-                      Prompt enviado:{" "}
-                      <span className="font-medium text-primary/85">{pendingPrompt}</span>
-                    </p>
-                  </div>
-                </div>
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-center">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="mt-4 text-base font-semibold text-foreground">Consultando modelos...</p>
-                  <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                    Estamos analisando as respostas dos modelos selecionados. Isso pode levar alguns segundos.
-                  </p>
+      {hasPromptInteraction ? (
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="mx-auto flex w-full max-w-[98rem] flex-1 flex-col gap-8 px-2 pt-6 pb-6 sm:px-6 lg:px-10 min-h-0">
+            <div className="flex-1 min-h-0">
+              <div className="flex h-full rounded-[32px] border border-white/10 bg-black/30 p-6 shadow-[0_45px_140px_-90px_rgba(147,51,234,0.7)] backdrop-blur">
+                <div className="custom-scrollbar h-full w-full overflow-y-auto pr-2 sm:pr-4">
+                  <div className="flex flex-col gap-10 pb-6">{renderResultsSections()}</div>
                 </div>
               </div>
-            </section>
-          )}
-
-          {turnsForDisplay.map((turn, index) => {
-            const isLatest = index === 0;
-            const turnOutputs = Array.isArray(turn.outputs) ? turn.outputs : [];
-            const turnOutputsCount = turnOutputs.length;
-            const turnDate = new Date(turn.timestamp).toLocaleString();
-            const storedWinner = getWinnerInfoForTurn(turn);
-            const fallbackLatestWinnerId =
-              !storedWinner.outputId && isLatest && hasVoted ? votedFor : null;
-            const fallbackLatestWinnerName = (() => {
-              if (storedWinner.modelName || !isLatest || !fallbackLatestWinnerId) return null;
-              const fallbackOutput = outputsById[fallbackLatestWinnerId];
-              if (!fallbackOutput) return null;
-              return (
-                fallbackOutput.modelName ||
-                getModelDisplayName(fallbackOutput.modelId)
-              );
-            })();
-            const resolvedWinnerOutputId = storedWinner.outputId ?? fallbackLatestWinnerId;
-            const resolvedWinnerModelName =
-              storedWinner.modelName ?? fallbackLatestWinnerName ?? null;
-            const hasResolvedWinner = Boolean(resolvedWinnerOutputId);
-            return (
-              <section
-                key={turn.id}
-                className={cn(
-                  "relative overflow-hidden rounded-3xl border bg-gradient-to-br shadow-[0_40px_120px_-80px_rgba(147,51,234,0.55)]",
-                  isLatest
-                    ? "border-primary/30 from-primary/10 via-background/85 to-background"
-                    : "border-white/10 from-background/80 via-background/95 to-background"
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0">
-                  <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-                  <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/8 blur-3xl" />
-                </div>
-                <div className="relative space-y-8 p-6 sm:p-10">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
-                        <span className={cn(isLatest ? "text-primary/70" : "text-muted-foreground/70")}>
-                          {isLatest ? "Resultado atual" : "Histórico"}
-                        </span>
-                        <span className="text-muted-foreground/60">•</span>
-                        <span className="text-muted-foreground/60">{turnDate}</span>
-                      </div>
-                      <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-                        Comparativo de Respostas
-                      </h2>
-                      <p className="max-w-3xl text-sm text-muted-foreground">
-                        Prompt analisado:{" "}
-                        <span className="font-medium text-primary/85">{turn.prompt}</span>
-                      </p>
-                    </div>
-                    <div
-                      className={cn(
-                        "rounded-full border px-4 py-2 text-sm font-semibold",
-                        isLatest
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-white/10 bg-white/5 text-muted-foreground/80"
-                      )}
-                    >
-                      {turnOutputsCount} {turnOutputsCount === 1 ? "resposta" : "respostas"}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-                    {turnOutputs.map((item, turnIndex) => {
-                      const outputId = item.id;
-                      const modelLabel = item.modelName || getModelDisplayName(item.modelId);
-                      const isWinner = hasResolvedWinner && resolvedWinnerOutputId === outputId;
-                      const isRunnerUp = hasResolvedWinner && resolvedWinnerOutputId !== outputId;
-                      const answerText =
-                        item.response && item.response.length > 0 ? item.response : "Resposta não disponível";
-                      const durationMs = Number.isFinite(item.responseTimeMs) ? item.responseTimeMs : 0;
-
-                      return (
-                        <Card
-                          key={outputId}
-                          className={cn(
-                            "overflow-hidden border border-white/10 bg-white/5 backdrop-blur transition-all duration-300",
-                            isLatest
-                              ? "shadow-[0_30px_90px_-70px_rgba(79,70,229,0.6)] hover:border-primary/50 hover:shadow-[0_45px_120px_-70px_rgba(147,51,234,0.7)]"
-                              : "shadow-[0_24px_70px_-70px_rgba(79,70,229,0.35)]",
-                            isWinner && "border-primary/60 bg-primary/15"
-                          )}
-                        >
-                          <CardHeader className="flex flex-col gap-3 border-b border-white/10 bg-white/5 p-5">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="space-y-1">
-                                <CardTitle className="text-lg font-semibold text-foreground sm:text-xl">
-                                  Modelo {String.fromCharCode(65 + turnIndex)}
-                                </CardTitle>
-                                <p className="text-sm text-muted-foreground">{modelLabel}</p>
-                              </div>
-                              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sidebar-foreground/70">
-                                <Timer className="h-4 w-4 text-primary" />
-                                <span>{formatTime(durationMs)}</span>
-                              </div>
-                            </div>
-                            {isWinner && (
-                              <Badge className="w-fit border border-primary/50 bg-primary/20 text-primary">
-                                Selecionado
-                              </Badge>
-                            )}
-                            {isRunnerUp && (
-                              <Badge className="w-fit border border-white/10 bg-white/5 text-muted-foreground">
-                                Não selecionado
-                              </Badge>
-                            )}
-                          </CardHeader>
-                          <CardContent className="p-5">
-                            <p className="min-h-[150px] whitespace-pre-line text-lg leading-relaxed text-foreground sm:text-xl">
-                              {answerText}
-                            </p>
-                            {isLatest && !hasResolvedWinner && (
-                              <Button
-                                onClick={() => handleVote(outputId)}
-                                className="mt-5 w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-5 text-base font-semibold text-primary-foreground shadow-[0_20px_50px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
-                              >
-                                <ThumbsUp className="mr-2 h-4 w-4" /> Votar nesta resposta
-                              </Button>
-                            )}
-                            {hasResolvedWinner && resolvedWinnerOutputId === outputId && (
-                              <div className="mt-5 rounded-2xl border border-primary/40 bg-primary/10 p-4">
-                                <div className="mb-2 flex items-center gap-3">
-                                  <Trophy className="h-6 w-6 text-primary" />
-                                  <h4 className="text-lg font-semibold text-primary">Seu voto contabilizado</h4>
-                                </div>
-                                <p className="text-sm text-foreground">
-                                  Você escolheu{" "}
-                                  <span className="font-medium">
-                                    {resolvedWinnerModelName ?? modelLabel}
-                                  </span>{" "}
-                                  como melhor resposta.
-                                </p>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              </section>
-            );
-          })}
-
-          <div
-            className={cn(
-              "flex justify-center transition-all duration-300",
-              showSuggestions ? "pt-20 sm:pt-24" : hasAnyResponses ? "pt-16 sm:pt-20" : "pt-24 sm:pt-28"
-            )}
-          >
-            <section className="relative w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Envie um desafio</p>
-                  <h3 className="text-lg font-semibold text-sidebar-foreground sm:text-xl">Compare respostas em segundos</h3>
-                </div>
-                {outputsCount > 0 && (
-                  <span className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
-                    {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
-                  </span>
-                )}
-              </div>
-              {!hasAnyResponses && !isProcessing && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Clique no botão de ideias para acessar sugestões ou descreva seu próprio cenário no campo abaixo.
-                </p>
-              )}
-              <div className="relative mt-6">
-                {showSuggestions && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity"
-                      onClick={() => setShowSuggestions(false)}
-                    />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
-                      <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-[#1b1242]/95 via-[#090e28]/96 to-[#040817]/98 p-6 shadow-[0_45px_160px_-70px_rgba(147,51,234,0.95)] backdrop-blur-2xl">
-                        <button
-                          type="button"
-                          onClick={() => setShowSuggestions(false)}
-                          aria-label="Fechar sugestões"
-                          className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-muted-foreground transition hover:border-primary/40 hover:bg-primary/25 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                        <div className="flex flex-col gap-2 pr-10">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary/60">
-                            Sugestões
-                          </p>
-                          <h4 className="text-2xl font-semibold text-foreground">Precisa de inspiração rápida?</h4>
-                          <p className="text-sm text-muted-foreground/80">
-                            Selecione um dos prompts abaixo para preencher o campo automaticamente e iniciar um desafio.
-                          </p>
-                        </div>
-                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                          {promptSuggestions.map((suggestion, index) => (
-                            <button
-                              key={`${suggestion}-${index}`}
-                              type="button"
-                              onClick={() => {
-                                setPrompt(suggestion);
-                                setShowSuggestions(false);
-                              }}
-                              className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-sm text-foreground transition-all hover:border-primary/60 hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
-                            >
-                              <span className="font-medium leading-snug transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
-                                {suggestion}
-                              </span>
-                              <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
-                                Usar
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-                <Textarea
-                  placeholder="Pergunte qualquer coisa..."
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="min-h-[110px] resize-none rounded-2xl border border-white/10 bg-black/30 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[130px] lg:min-h-[150px]"
-                  disabled={isRunning}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      runArena();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSuggestions(prev => !prev)}
-                  aria-label={showSuggestions ? "Ocultar sugestões" : "Mostrar sugestões"}
-                  className="absolute bottom-5 right-20 flex h-12 w-12 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary shadow-[0_15px_40px_-25px_rgba(147,51,234,0.8)] transition hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 sm:right-24"
-                >
-                  {showSuggestions ? <X className="h-5 w-5" /> : <Lightbulb className="h-5 w-5" />}
-                </button>
-
-                <Button
-                  onClick={runArena}
-                  disabled={isRunning || !prompt.trim()}
-                  className="absolute bottom-5 right-5 h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-0 text-primary-foreground shadow-[0_25px_60px_-30px_rgba(147,51,234,0.8)] transition hover:from-primary/90 hover:to-accent"
-                >
-                  {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                </Button>
-              </div>
-            </section>
+            </div>
+            <footer className="mx-auto mt-auto w-full max-w-4xl">{renderPromptSection(true)}</footer>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1">
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-[88rem] flex-col gap-10 px-4 py-10 sm:px-6 lg:px-10",
+              !hasAnyResponses && "min-h-[70vh] justify-center"
+            )}
+          >
+            <div className="flex flex-col gap-10">{renderResultsSections()}</div>
+            <div
+              className={cn(
+                "flex justify-center transition-all duration-300",
+                showSuggestions ? "pt-20 sm:pt-24" : hasAnyResponses ? "pt-16 sm:pt-20" : "pt-24 sm:pt-28"
+              )}
+            >
+              {renderPromptSection(false)}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
