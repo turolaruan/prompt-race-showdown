@@ -33,8 +33,8 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     history: chatHistory,
     currentChatId,
     addChat,
-    updateChat,
     appendTurn,
+    setTurnWinner,
     setCurrentChat,
   } = useChatHistory();
   const [prompt, setPrompt] = useState("");
@@ -45,6 +45,10 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const activeChat = useMemo(
+    () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
+    [chatHistory, currentChatId]
+  );
   const promptSuggestions = [
     "Explique como funciona a inteligência artificial",
     "Escreva um código Python para calcular fibonacci",
@@ -54,18 +58,26 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     "Como funciona o algoritmo de ordenação quicksort?",
   ];
   useEffect(() => {
-    if (!currentChatId) return;
-    const target = chatHistory.find(chat => chat.id === currentChatId);
-    if (!target) return;
-    if (Array.isArray(target.turns) && target.turns.length > 0) {
+    if (!activeChat) {
+      setConversation([]);
+      return;
+    }
+
+    if (Array.isArray(activeChat.turns) && activeChat.turns.length > 0) {
       setConversation(
-        target.turns.map(turn => ({
+        activeChat.turns.map(turn => ({
           ...turn,
           outputs: Array.isArray(turn.outputs) ? [...turn.outputs] : [],
+          winnerOutputId: turn.winnerOutputId ?? null,
+          winnerModelId: turn.winnerModelId ?? null,
+          winnerModelName: turn.winnerModelName ?? null,
         }))
       );
+    } else {
+      setConversation([]);
     }
-  }, [currentChatId, chatHistory]);
+  }, [activeChat]);
+
   const formatTime = (milliseconds: number): string => {
     if (milliseconds < 1000) {
       return `${Math.round(milliseconds)}ms`;
@@ -94,6 +106,77 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       return acc;
     }, {});
   }, [latestOutputs]);
+
+  const getWinnerInfoForTurn = useCallback(
+    (turn: ChatTurn | null): { outputId: string | null; modelName: string | null } => {
+      if (!turn) return { outputId: null, modelName: null };
+      const outputs = Array.isArray(turn.outputs) ? turn.outputs : [];
+
+      if (turn.winnerOutputId) {
+        const matched = outputs.find(output => output.id === turn.winnerOutputId);
+        return {
+          outputId: turn.winnerOutputId,
+          modelName:
+            turn.winnerModelName ??
+            matched?.modelName ??
+            (matched ? getModelDisplayName(matched.modelId) : null),
+        };
+      }
+
+      if (turn.winnerModelId) {
+        const matchedByModelId = outputs.find(output => output.modelId === turn.winnerModelId);
+        if (matchedByModelId) {
+          return {
+            outputId: matchedByModelId.id,
+            modelName:
+              turn.winnerModelName ??
+              matchedByModelId.modelName ??
+              getModelDisplayName(matchedByModelId.modelId),
+          };
+        }
+      }
+
+      if (turn.winnerModelName) {
+        const normalized = turn.winnerModelName.trim().toLowerCase();
+        const matchedByName = outputs.find(output => {
+          const label =
+            (output.modelName || getModelDisplayName(output.modelId)).trim().toLowerCase();
+          return label === normalized;
+        });
+        if (matchedByName) {
+          return {
+            outputId: matchedByName.id,
+            modelName: turn.winnerModelName,
+          };
+        }
+        return {
+          outputId: null,
+          modelName: turn.winnerModelName,
+        };
+      }
+
+      return { outputId: null, modelName: null };
+    },
+    []
+  );
+
+  const restoreVoteState = useCallback(
+    (turn: ChatTurn | null) => {
+      const winnerInfo = getWinnerInfoForTurn(turn);
+      if (winnerInfo.outputId) {
+        setHasVoted(true);
+        setVotedFor(winnerInfo.outputId);
+      } else {
+        setHasVoted(false);
+        setVotedFor(null);
+      }
+    },
+    [getWinnerInfoForTurn]
+  );
+
+  useEffect(() => {
+    restoreVoteState(latestTurn ?? null);
+  }, [latestTurn, restoreVoteState]);
   const generateMockResponse = async (prompt: string): Promise<any> => {
     // Simular delay da API
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
@@ -234,6 +317,9 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         prompt: currentPrompt,
         timestamp: turnTimestamp,
         outputs: processedOutputs,
+        winnerOutputId: null,
+        winnerModelId: null,
+        winnerModelName: null,
       };
 
       appendTurn(chatId, turn);
@@ -258,22 +344,33 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   };
   const handleVote = async (outputId: string) => {
     if (hasVoted) return;
-    if (!latestTurn) return;
+    if (!latestTurn || !currentChatId) return;
     const selectedOutput = outputsById[outputId];
     const selectedModelName = selectedOutput?.modelName ?? outputId;
     const selectedModelId = selectedOutput?.modelId ?? outputId;
     
     setVotedFor(outputId);
     setHasVoted(true);
+    setConversation(prev =>
+      prev.map(turn =>
+        turn.id === latestTurn.id
+          ? {
+              ...turn,
+              winnerOutputId: outputId,
+              winnerModelId: selectedModelId,
+              winnerModelName: selectedModelName,
+            }
+          : turn
+      )
+    );
 
     // Save vote to database
-    const currentChat = chatHistory.find(c => c.id === currentChatId);
     const allOutputs = latestOutputs;
     
     try {
       const { error } = await supabase.from("arena_votes").insert({
         winner_model_id: selectedModelId,
-        prompt: latestTurn.prompt || currentChat?.prompt || "",
+        prompt: latestTurn.prompt || activeChat?.prompt || "",
         model_a_id: allOutputs[0]?.modelId || "",
         model_b_id: allOutputs[1]?.modelId || "",
         technique: "Modelo base", // Default technique - can be enhanced later
@@ -292,9 +389,11 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       console.error("Error saving vote:", error);
     }
 
-    if (currentChatId) {
-      updateChat(currentChatId, { winner: selectedModelName });
-    }
+    setTurnWinner(currentChatId, latestTurn.id, {
+      outputId,
+      modelId: selectedModelId,
+      modelName: selectedModelName,
+    });
     toast({
       title: "Voto Registrado!",
       description: selectedOutput
@@ -314,21 +413,24 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   }, [setCurrentChat]);
 
   const loadChatFromHistory = useCallback((chat: ChatHistoryEntry) => {
+    const turns = Array.isArray(chat.turns)
+      ? chat.turns.map(turn => ({
+          ...turn,
+          outputs: Array.isArray(turn.outputs) ? [...turn.outputs] : [],
+          winnerOutputId: turn.winnerOutputId ?? null,
+          winnerModelId: turn.winnerModelId ?? null,
+          winnerModelName: turn.winnerModelName ?? null,
+        }))
+      : [];
+
     setCurrentChat(chat.id);
-    setConversation(
-      Array.isArray(chat.turns)
-        ? chat.turns.map(turn => ({
-            ...turn,
-            outputs: Array.isArray(turn.outputs) ? [...turn.outputs] : [],
-          }))
-        : []
-    );
+    setConversation(turns);
     setPrompt("");
-    setHasVoted(false);
-    setVotedFor(null);
     setPendingPrompt(null);
     setIsRunning(false);
-  }, [setCurrentChat]);
+    const latestSavedTurn = turns.length > 0 ? turns[turns.length - 1] : null;
+    restoreVoteState(latestSavedTurn ?? null);
+  }, [restoreVoteState, setCurrentChat]);
 
   useImperativeHandle(
     ref,
@@ -407,6 +509,22 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             const turnOutputs = Array.isArray(turn.outputs) ? turn.outputs : [];
             const turnOutputsCount = turnOutputs.length;
             const turnDate = new Date(turn.timestamp).toLocaleString();
+            const storedWinner = getWinnerInfoForTurn(turn);
+            const fallbackLatestWinnerId =
+              !storedWinner.outputId && isLatest && hasVoted ? votedFor : null;
+            const fallbackLatestWinnerName = (() => {
+              if (storedWinner.modelName || !isLatest || !fallbackLatestWinnerId) return null;
+              const fallbackOutput = outputsById[fallbackLatestWinnerId];
+              if (!fallbackOutput) return null;
+              return (
+                fallbackOutput.modelName ||
+                getModelDisplayName(fallbackOutput.modelId)
+              );
+            })();
+            const resolvedWinnerOutputId = storedWinner.outputId ?? fallbackLatestWinnerId;
+            const resolvedWinnerModelName =
+              storedWinner.modelName ?? fallbackLatestWinnerName ?? null;
+            const hasResolvedWinner = Boolean(resolvedWinnerOutputId);
             return (
               <section
                 key={turn.id}
@@ -455,8 +573,8 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                     {turnOutputs.map((item, turnIndex) => {
                       const outputId = item.id;
                       const modelLabel = item.modelName || getModelDisplayName(item.modelId);
-                      const isWinner = isLatest && hasVoted && votedFor === outputId;
-                      const isRunnerUp = isLatest && hasVoted && votedFor !== outputId;
+                      const isWinner = hasResolvedWinner && resolvedWinnerOutputId === outputId;
+                      const isRunnerUp = hasResolvedWinner && resolvedWinnerOutputId !== outputId;
                       const answerText =
                         item.response && item.response.length > 0 ? item.response : "Resposta não disponível";
                       const durationMs = Number.isFinite(item.responseTimeMs) ? item.responseTimeMs : 0;
@@ -500,7 +618,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                             <p className="min-h-[150px] whitespace-pre-line text-lg leading-relaxed text-foreground sm:text-xl">
                               {answerText}
                             </p>
-                            {isLatest && !hasVoted && (
+                            {isLatest && !hasResolvedWinner && (
                               <Button
                                 onClick={() => handleVote(outputId)}
                                 className="mt-5 w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-5 text-base font-semibold text-primary-foreground shadow-[0_20px_50px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
@@ -508,14 +626,18 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                                 <ThumbsUp className="mr-2 h-4 w-4" /> Votar nesta resposta
                               </Button>
                             )}
-                            {isLatest && hasVoted && votedFor === outputId && (
+                            {hasResolvedWinner && resolvedWinnerOutputId === outputId && (
                               <div className="mt-5 rounded-2xl border border-primary/40 bg-primary/10 p-4">
                                 <div className="mb-2 flex items-center gap-3">
                                   <Trophy className="h-6 w-6 text-primary" />
                                   <h4 className="text-lg font-semibold text-primary">Seu voto contabilizado</h4>
                                 </div>
                                 <p className="text-sm text-foreground">
-                                  Você escolheu <span className="font-medium">{modelLabel}</span> como melhor resposta.
+                                  Você escolheu{" "}
+                                  <span className="font-medium">
+                                    {resolvedWinnerModelName ?? modelLabel}
+                                  </span>{" "}
+                                  como melhor resposta.
                                 </p>
                               </div>
                             )}

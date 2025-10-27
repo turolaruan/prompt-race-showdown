@@ -13,6 +13,9 @@ export interface ChatTurn {
   prompt: string;
   timestamp: string;
   outputs: ChatTurnOutput[];
+  winnerOutputId?: string | null;
+  winnerModelId?: string | null;
+  winnerModelName?: string | null;
 }
 
 export interface ChatHistoryEntry {
@@ -30,6 +33,11 @@ interface ChatHistoryContextValue {
   addChat: (prompt: string) => string;
   updateChat: (id: string, updates: Partial<Omit<ChatHistoryEntry, "id" | "turns">>) => void;
   appendTurn: (id: string, turn: ChatTurn) => void;
+  setTurnWinner: (
+    id: string,
+    turnId: string,
+    winner: { outputId?: string | null; modelId: string; modelName: string }
+  ) => void;
   setCurrentChat: (id: string | null) => void;
   clearHistory: () => void;
 }
@@ -55,12 +63,55 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
     return entries.map(entry => {
       const timestamp = entry?.timestamp ?? new Date().toISOString();
       const updatedAt = entry?.updatedAt ?? timestamp;
-      const turns = Array.isArray(entry?.turns)
+      let turns = Array.isArray(entry?.turns)
         ? entry.turns.map(turn => ({
             ...turn,
             outputs: Array.isArray(turn.outputs) ? turn.outputs : [],
+            winnerOutputId:
+              typeof turn.winnerOutputId === "string" || turn.winnerOutputId === null
+                ? turn.winnerOutputId
+                : null,
+            winnerModelId:
+              typeof turn.winnerModelId === "string" || turn.winnerModelId === null
+                ? turn.winnerModelId
+                : null,
+            winnerModelName:
+              typeof turn.winnerModelName === "string" || turn.winnerModelName === null
+                ? turn.winnerModelName
+                : null,
           }))
         : [];
+
+      if (entry.winner && turns.length > 0) {
+        const lastIndex = turns.length - 1;
+        const lastTurn = turns[lastIndex];
+        if (!lastTurn.winnerModelName && !lastTurn.winnerOutputId) {
+          const normalizedWinner = entry.winner.trim().toLowerCase();
+          let matchedOutputId: string | null = null;
+          const outputs = Array.isArray(lastTurn.outputs) ? lastTurn.outputs : [];
+          if (normalizedWinner) {
+            const matched = outputs.find(output => {
+              const label = (output.modelName || output.modelId || "").trim().toLowerCase();
+              return label === normalizedWinner;
+            });
+            matchedOutputId = matched?.id ?? null;
+          }
+
+          turns = turns.map((turn, index) =>
+            index === lastIndex
+              ? {
+                  ...turn,
+                  winnerOutputId: matchedOutputId,
+                  winnerModelId:
+                    matchedOutputId && outputs.length > 0
+                      ? outputs.find(output => output.id === matchedOutputId)?.modelId ?? null
+                      : turn.winnerModelId ?? null,
+                  winnerModelName: entry.winner,
+                }
+              : turn
+          );
+        }
+      }
       return {
         id: entry.id,
         prompt: entry.prompt ?? "",
@@ -140,6 +191,9 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
     const storedTurn: ChatTurn = {
       ...turn,
       outputs: Array.isArray(turn.outputs) ? [...turn.outputs] : [],
+      winnerOutputId: turn.winnerOutputId ?? null,
+      winnerModelId: turn.winnerModelId ?? null,
+      winnerModelName: turn.winnerModelName ?? null,
     };
     setHistory(prev => {
       const next = prev.map(entry => {
@@ -149,6 +203,36 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
           prompt: turn.prompt,
           updatedAt: turn.timestamp,
           turns: [...entry.turns, storedTurn],
+        };
+      });
+      return sortHistory(next);
+    });
+  }, [sortHistory]);
+
+  const setTurnWinner = useCallback<ChatHistoryContextValue["setTurnWinner"]>((id, turnId, winner) => {
+    const updatedAt = new Date().toISOString();
+    setHistory(prev => {
+      const next = prev.map(entry => {
+        if (entry.id !== id) return entry;
+        let turnUpdated = false;
+        const turns = entry.turns.map(turn => {
+          if (turn.id !== turnId) return turn;
+          turnUpdated = true;
+          return {
+            ...turn,
+            winnerOutputId: winner.outputId ?? null,
+            winnerModelId: winner.modelId,
+            winnerModelName: winner.modelName,
+          };
+        });
+        if (!turnUpdated) {
+          return entry;
+        }
+        return {
+          ...entry,
+          turns,
+          winner: winner.modelName,
+          updatedAt,
         };
       });
       return sortHistory(next);
@@ -167,10 +251,11 @@ export const ChatHistoryProvider = ({ children }: { children: ReactNode }) => {
       addChat,
       updateChat,
       appendTurn,
+      setTurnWinner,
       setCurrentChat: setCurrentChatId,
       clearHistory,
     }),
-    [history, currentChatId, addChat, updateChat, appendTurn, clearHistory]
+    [history, currentChatId, addChat, updateChat, appendTurn, setTurnWinner, clearHistory]
   );
 
   return <ChatHistoryContext.Provider value={value}>{children}</ChatHistoryContext.Provider>;
