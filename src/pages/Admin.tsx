@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useChatHistory } from "@/context/ChatHistoryContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Database, Trash2, MessageSquare, Vote, TrendingUp, BarChart } from "lucide-react";
 
 const Admin = () => {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  const { clearHistory } = useChatHistory();
 
   // Helper function to extract model name from path
   const extractModelName = (modelPath: string): string => {
@@ -161,6 +163,14 @@ const Admin = () => {
     }
   };
 
+
+  const handleClearHistory = () => {
+    clearHistory();
+    toast({
+      title: "Histórico limpo",
+      description: "Todos os chats locais foram removidos.",
+    });
+  };
   const clearTable = async (tableName: string) => {
     try {
       const { error } = await supabase.from(tableName as any).delete().gte('created_at', '1970-01-01');
@@ -186,6 +196,25 @@ const Admin = () => {
         <h1 className="text-4xl font-bold mb-8 text-foreground">Admin Panel</h1>
         
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Chat History Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Histórico de Chats
+                </span>
+                <Button variant="destructive" onClick={handleClearHistory}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Limpar histórico local
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Remove todos os chats salvos localmente na aplicação. Não afeta dados persistidos no banco.
+              </p>
+            </CardContent>
+          </Card>
           {/* Models Card */}
           <Card>
             <CardHeader>

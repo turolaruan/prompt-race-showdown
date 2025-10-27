@@ -43,7 +43,6 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ChatTurn[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
   const activeChat = useMemo(
     () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
@@ -252,6 +251,15 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     }
   };
   const runArena = async () => {
+    if (conversation.length > 0) {
+      toast({
+        title: "Inicie um novo chat",
+        description: 'Para enviar outro prompt, clique em "Novo Chat".',
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!prompt.trim()) {
       toast({
         title: "Erro",
@@ -510,12 +518,12 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             )}
           >
             <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -top-24 right-24 h-56 w-56 rounded-full bg-primary/10 blur-3xl" />
-              <div className="absolute bottom-0 left-12 h-72 w-72 rounded-full bg-accent/8 blur-3xl" />
+              <div className="absolute -top-20 right-16 h-52 w-52 rounded-full bg-primary/10 blur-3xl" />
+              <div className="absolute bottom-0 left-10 h-60 w-60 rounded-full bg-accent/8 blur-3xl" />
             </div>
-            <div className="relative space-y-12 p-6 sm:p-12">
-              <div className="flex flex-wrap items-start justify-between gap-6 rounded-3xl border border-white/10 bg-white/5/60 px-6 py-5 shadow-[0_35px_90px_-65px_rgba(147,51,234,0.65)] backdrop-blur-lg">
-                <div className="space-y-3">
+            <div className="relative space-y-8 p-5 sm:p-7">
+              <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-white/10 bg-white/5/60 px-5 py-4 shadow-[0_30px_80px_-60px_rgba(147,51,234,0.65)] backdrop-blur-lg">
+                <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
                     <span className={cn(isLatest ? "text-primary/70" : "text-muted-foreground/70")}>
                       {isLatest ? "Resultado atual" : "Histórico"}
@@ -523,17 +531,19 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                     <span className="text-muted-foreground/60">•</span>
                     <span className="text-muted-foreground/60">{turnDate}</span>
                   </div>
-                  <h2 className="text-2xl font-semibold text-foreground sm:text-3xl md:text-[34px]">
-                    Comparativo de Respostas
-                  </h2>
-                  <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
-                    Prompt analisado:{" "}
-                    <span className="font-medium text-primary/85">{turn.prompt}</span>
-                  </p>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
+                    <h2 className="text-lg font-semibold text-foreground sm:text-xl md:text-[26px]">
+                      Comparativo de Respostas
+                    </h2>
+                    <p className="text-xs text-muted-foreground sm:text-sm">
+                      Prompt:{" "}
+                      <span className="font-medium text-primary/85">{turn.prompt}</span>
+                    </p>
+                  </div>
                 </div>
                 <div
                   className={cn(
-                    "rounded-full border px-4 py-2 text-sm font-semibold",
+                    "rounded-full border px-3.5 py-1.5 text-sm font-semibold",
                     isLatest
                       ? "border-primary/40 bg-primary/10 text-primary"
                       : "border-white/10 bg-white/5 text-muted-foreground/80"
@@ -543,12 +553,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 </div>
               </div>
 
-              <div className="relative mx-auto flex h-6 w-full items-center justify-center">
-                <div className="h-px w-full rounded-full bg-gradient-to-r from-transparent via-primary/35 to-transparent" />
-                <div className="pointer-events-none absolute right-[10%] top-1/2 h-px w-24 -translate-y-1/2 rotate-[2deg] bg-gradient-to-r from-transparent via-primary/25 to-transparent opacity-70" />
-              </div>
-
-              <div className="grid grid-cols-1 gap-10 xl:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {turnOutputs.map((item, turnIndex) => {
                   const outputId = item.id;
                   const modelLabel = item.modelName || getModelDisplayName(item.modelId);
@@ -563,6 +568,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                   const accentGradient = isWinner
                     ? "from-primary/95 via-primary/70 to-accent/80"
                     : "from-white/40 via-white/15 to-transparent";
+                  const shouldRevealModelLabel = !isLatest || hasResolvedWinner;
 
                   return (
                     <Card
@@ -582,15 +588,21 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                           accentGradient
                         )}
                       />
-                      <CardHeader className="flex flex-col gap-3 border-b border-white/10 bg-white/5/70 p-7 pb-5">
-                        <div className="flex items-center justify-between gap-4">
+                      <CardHeader className="flex flex-col gap-2 border-b border-white/10 bg-white/5/70 p-5 pb-4">
+                        <div className="flex items-center justify-between gap-3">
                           <div className="space-y-1">
-                            <CardTitle className="text-2xl font-semibold text-foreground sm:text-[28px]">
+                            <CardTitle className="text-xl font-semibold text-foreground sm:text-2xl">
                               Modelo {String.fromCharCode(65 + turnIndex)}
                             </CardTitle>
-                            <p className="text-sm text-muted-foreground">{modelLabel}</p>
+                            {shouldRevealModelLabel ? (
+                              <p className="text-sm text-muted-foreground">{modelLabel}</p>
+                            ) : (
+                              <p className="text-sm italic text-muted-foreground/70">
+                                Nome revelado após o voto
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-sidebar-foreground/70">
+                          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sidebar-foreground/70">
                             <Timer className="h-4 w-4 text-primary" />
                             <span className="tracking-wide">{formatTime(durationMs)}</span>
                           </div>
@@ -607,12 +619,12 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                         )}
                       </CardHeader>
                       <CardContent className="flex flex-1 flex-col p-0">
-                        <div className="flex-1 space-y-8 border-b border-white/10 px-7 pb-7 pt-7">
-                          <p className="whitespace-pre-line text-xl leading-relaxed text-foreground sm:text-[22px] md:text-[24px]">
+                        <div className="flex-1 space-y-5 border-b border-white/10 px-5 py-5">
+                          <p className="whitespace-pre-line text-lg leading-relaxed text-foreground sm:text-xl">
                             {answerText}
                           </p>
                         </div>
-                        <div className="flex flex-col gap-5 px-7 pb-7 pt-6">
+                        <div className="flex flex-col gap-4 px-5 py-4">
                           {isLatest && !hasResolvedWinner && (
                             <Button
                               onClick={() => handleVote(outputId)}
@@ -649,7 +661,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     </>
   );
 
-  const renderPromptSection = (isDocked: boolean) => (
+  const renderPromptSection = (isDocked = false) => (
     <section
       className={cn(
         "relative w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6",
@@ -669,59 +681,38 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       </div>
       {!hasAnyResponses && !isProcessing && (
         <p className="mt-2 text-sm text-muted-foreground">
-          Clique no botão de ideias para acessar sugestões ou descreva seu próprio cenário no campo abaixo.
+          Clique em alguma sugestão ou descreva seu próprio cenário no campo abaixo.
         </p>
       )}
-      <div className="relative mt-6">
-        {showSuggestions && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity"
-              onClick={() => setShowSuggestions(false)}
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
-              <div className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-primary/25 bg-gradient-to-br from-[#1b1242]/95 via-[#090e28]/96 to-[#040817]/98 p-6 shadow-[0_45px_160px_-70px_rgba(147,51,234,0.95)] backdrop-blur-2xl">
-                <button
-                  type="button"
-                  onClick={() => setShowSuggestions(false)}
-                  aria-label="Fechar sugestões"
-                  className="absolute right-4 top-4 rounded-full border border-white/10 bg-white/5 p-2 text-muted-foreground transition hover:border-primary/40 hover:bg-primary/25 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-                <div className="flex flex-col gap-2 pr-10">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary/60">
-                    Sugestões
-                  </p>
-                  <h4 className="text-2xl font-semibold text-foreground">Precisa de inspiração rápida?</h4>
-                  <p className="text-sm text-muted-foreground/80">
-                    Selecione um dos prompts abaixo para preencher o campo automaticamente e iniciar um desafio.
-                  </p>
-                </div>
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  {promptSuggestions.map((suggestion, index) => (
-                    <button
-                      key={`${suggestion}-${index}`}
-                      type="button"
-                      onClick={() => {
-                        setPrompt(suggestion);
-                        setShowSuggestions(false);
-                      }}
-                      className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-sm text-foreground transition-all hover:border-primary/60 hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
-                    >
-                      <span className="font-medium leading-snug transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
-                        {suggestion}
-                      </span>
-                      <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
-                        Usar
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
+      <div className="relative mt-4 space-y-5">
+        <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background/70 to-background p-5 shadow-[0_30px_90px_-60px_rgba(147,51,234,0.65)] backdrop-blur">
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary/60">
+              Sugestões
+            </p>
+            <h4 className="text-lg font-semibold text-foreground sm:text-xl">Precisa de inspiração rápida?</h4>
+            <p className="text-sm text-muted-foreground/80">
+              Escolha um dos prompts abaixo para preencher automaticamente o campo de entrada e iniciar um novo desafio.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {promptSuggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion}-${index}`}
+                type="button"
+                onClick={() => setPrompt(suggestion)}
+                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-foreground transition-all hover:border-primary/60 hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
+              >
+                <span className="font-medium leading-snug transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
+                  {suggestion}
+                </span>
+                <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  Usar
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
         <Textarea
           placeholder="Pergunte qualquer coisa..."
           value={prompt}
@@ -735,14 +726,6 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             }
           }}
         />
-        <button
-          type="button"
-          onClick={() => setShowSuggestions(prev => !prev)}
-          aria-label={showSuggestions ? "Ocultar sugestões" : "Mostrar sugestões"}
-          className="absolute bottom-5 right-20 flex h-12 w-12 items-center justify-center rounded-full border border-primary/40 bg-primary/10 text-primary shadow-[0_15px_40px_-25px_rgba(147,51,234,0.8)] transition hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 sm:right-24"
-        >
-          {showSuggestions ? <X className="h-5 w-5" /> : <Lightbulb className="h-5 w-5" />}
-        </button>
 
         <Button
           onClick={runArena}
@@ -756,7 +739,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   );
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[98rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
           <div className="flex-1 min-w-[260px] space-y-1">
@@ -776,36 +759,28 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
           </div>
         </div>
       </div>
-
       {hasPromptInteraction ? (
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="mx-auto flex w-full max-w-[98rem] flex-1 flex-col gap-8 px-2 pt-6 pb-6 sm:px-6 lg:px-10 min-h-0">
-            <div className="flex-1 min-h-0">
-              <div className="flex h-full rounded-[32px] border border-white/10 bg-black/30 p-6 shadow-[0_45px_140px_-90px_rgba(147,51,234,0.7)] backdrop-blur">
-                <div className="custom-scrollbar h-full w-full overflow-y-auto pr-2 sm:pr-4">
-                  <div className="flex flex-col gap-10 pb-6">{renderResultsSections()}</div>
-                </div>
-              </div>
-            </div>
-            <footer className="mx-auto mt-auto w-full max-w-4xl">{renderPromptSection(true)}</footer>
+        <div className="flex-1">
+          <div className="mx-auto w-full max-w-[98rem] px-4 py-6 sm:px-8 lg:px-12">
+            <div className="flex flex-col gap-6">{renderResultsSections()}</div>
           </div>
         </div>
       ) : (
         <div className="flex-1">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-[88rem] flex-col gap-10 px-4 py-10 sm:px-6 lg:px-10",
+              "mx-auto flex w-full max-w-[98rem] flex-col gap-6 px-4 py-6 sm:px-8 lg:px-12",
               !hasAnyResponses && "min-h-[70vh] justify-center"
             )}
           >
-            <div className="flex flex-col gap-10">{renderResultsSections()}</div>
+            <div className="flex flex-col gap-6">{renderResultsSections()}</div>
             <div
               className={cn(
                 "flex justify-center transition-all duration-300",
-                showSuggestions ? "pt-20 sm:pt-24" : hasAnyResponses ? "pt-16 sm:pt-20" : "pt-24 sm:pt-28"
+                "pt-20 sm:pt-24"
               )}
             >
-              {renderPromptSection(false)}
+              {renderPromptSection()}
             </div>
           </div>
         </div>

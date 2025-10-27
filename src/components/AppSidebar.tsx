@@ -212,18 +212,21 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                         activeChat && "border-primary/40 bg-primary/10"
                       )}
                     >
-                  <p className="truncate text-sm font-medium text-sidebar-foreground">
-                    {chat.prompt || "Prompt sem título"}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-sidebar-foreground/60">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {new Date(chat.updatedAt ?? chat.timestamp).toLocaleDateString()}
-                    </span>
-                    {chat.winner && (
-                          <span className="flex items-center gap-1 text-emerald-400">
-                            <Trophy className="h-3.5 w-3.5" />
-                            {chat.winner}
+                      <p className="truncate text-sm font-medium text-sidebar-foreground">
+                        {chat.prompt || "Prompt sem título"}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between text-[11px] text-sidebar-foreground/60">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" />
+                          {new Date(chat.updatedAt ?? chat.timestamp).toLocaleDateString()}
+                        </span>
+                        {chat.winner && (
+                          <span
+                            className="flex min-w-0 items-center gap-1 text-emerald-400"
+                            title={chat.winner}
+                          >
+                            <Trophy className="h-3.5 w-3.5 shrink-0" />
+                            <span className="max-w-[110px] truncate">{chat.winner}</span>
                           </span>
                         )}
                       </div>

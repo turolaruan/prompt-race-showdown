@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -239,14 +239,35 @@ const Dashboard = () => {
     loadBenchmarks();
   }, [loadBenchmarks]);
 
-  const filteredBenchmarks = benchmarks.filter(b => {
-    if (selectedTask !== "all" && resolveTask(b) !== selectedTask) return false;
-    if (selectedModel !== "all" && resolveModelName(b) !== selectedModel) return false;
-    if (selectedModelFamily !== "all" && resolveModelFamily(b) !== selectedModelFamily) return false;
-    if (selectedTechnique !== "all" && resolveTechnique(b) !== selectedTechnique) return false;
-    if (selectedBenchmark !== "all" && resolveBenchmark(b) !== selectedBenchmark) return false;
-    return true;
-  });
+  const passesFilters = useCallback(
+    (benchmark: BenchmarkDetails, options?: { ignoreBenchmark?: boolean }) => {
+      if (selectedTask !== "all" && resolveTask(benchmark) !== selectedTask) return false;
+      if (selectedModel !== "all" && resolveModelName(benchmark) !== selectedModel) return false;
+      if (selectedModelFamily !== "all" && resolveModelFamily(benchmark) !== selectedModelFamily) return false;
+      if (selectedTechnique !== "all" && resolveTechnique(benchmark) !== selectedTechnique) return false;
+      if (!options?.ignoreBenchmark && selectedBenchmark !== "all" && resolveBenchmark(benchmark) !== selectedBenchmark) return false;
+      return true;
+    },
+    [
+      selectedTask,
+      selectedModel,
+      selectedModelFamily,
+      selectedTechnique,
+      selectedBenchmark,
+      resolveTask,
+      resolveModelName,
+      resolveModelFamily,
+      resolveTechnique,
+      resolveBenchmark,
+    ]
+  );
+
+  const filteredBenchmarks = useMemo(() => benchmarks.filter(b => passesFilters(b)), [benchmarks, passesFilters]);
+  const benchmarksForAverages = useMemo(
+    () => benchmarks.filter(b => passesFilters(b, { ignoreBenchmark: true })),
+    [benchmarks, passesFilters]
+  );
+
 
   const resolvedTasks = benchmarks
     .map(resolveTask)
@@ -354,6 +375,55 @@ const Dashboard = () => {
         filteredBenchmarks.length
       ).toFixed(2)
     : "0";
+
+  const modelAverageStats = useMemo(() => {
+    const accumulator = new Map<
+      string,
+      {
+        modelName: string;
+        total: number;
+        count: number;
+        best: { name: string; accuracy: number } | null;
+        worst: { name: string; accuracy: number } | null;
+      }
+    >();
+
+    benchmarksForAverages.forEach(benchmark => {
+      const modelName = resolveModelName(benchmark);
+      if (!modelName) return;
+      const accuracy = typeof benchmark.accuracy_percent === "number" ? benchmark.accuracy_percent : 0;
+      const benchmarkName = resolveBenchmark(benchmark) ?? "Benchmark desconhecido";
+      const entry = accumulator.get(modelName) ?? {
+        modelName,
+        total: 0,
+        count: 0,
+        best: null,
+        worst: null,
+      };
+
+      entry.total += accuracy;
+      entry.count += 1;
+
+      if (!entry.best || accuracy > entry.best.accuracy) {
+        entry.best = { name: benchmarkName, accuracy };
+      }
+      if (!entry.worst || accuracy < entry.worst.accuracy) {
+        entry.worst = { name: benchmarkName, accuracy };
+      }
+
+      accumulator.set(modelName, entry);
+    });
+
+    return Array.from(accumulator.values())
+      .map(entry => ({
+        modelName: entry.modelName,
+        average: entry.count ? entry.total / entry.count : 0,
+        benchmarkCount: entry.count,
+        best: entry.best,
+        worst: entry.worst,
+      }))
+      .sort((a, b) => b.average - a.average);
+  }, [benchmarksForAverages, resolveModelName, resolveBenchmark]);
 
   const formatNumber = (value?: number | null, fractionDigits = 2) => {
     if (typeof value !== "number" || Number.isNaN(value)) {
