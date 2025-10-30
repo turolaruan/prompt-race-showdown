@@ -4,12 +4,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu } from "lucide-react";
+import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu, ChevronLeft, ChevronRight } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import { BenchmarkDetails, AnswerTypeStats } from "@/lib/mockBenchmarks";
 import evalResultsArray from "../../eval_results_array.json";
 import { useSidebar } from "@/context/SidebarContext";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface EvalResultTask {
   total?: number;
@@ -35,6 +41,7 @@ interface EvalResultsFile {
 }
 
 const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
+const ITEMS_PER_PAGE = 5;
 
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
   if (!modelPath) return null;
@@ -175,6 +182,7 @@ const Dashboard = () => {
   const [selectedTechnique, setSelectedTechnique] = useState<string>("all");
   const [selectedBenchmark, setSelectedBenchmark] = useState<string>("all");
   const [rankingOrder, setRankingOrder] = useState<"desc" | "asc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const resolveModelName = useCallback((benchmark: BenchmarkDetails) => {
     return benchmark.model_name ?? inferModelNameFromPath(benchmark.model_path) ?? "Modelo desconhecido";
@@ -317,22 +325,40 @@ const Dashboard = () => {
     },
   ];
 
-  const orderedBenchmarks = [...filteredBenchmarks].sort((a, b) => {
-    const diff = (a.accuracy_percent ?? 0) - (b.accuracy_percent ?? 0);
-    return rankingOrder === "desc" ? -diff : diff;
-  });
+  const orderedBenchmarks = useMemo(() => {
+    const sorted = [...filteredBenchmarks].sort((a, b) => {
+      const diff = (a.accuracy_percent ?? 0) - (b.accuracy_percent ?? 0);
+      return rankingOrder === "desc" ? -diff : diff;
+    });
+    return sorted;
+  }, [filteredBenchmarks, rankingOrder]);
 
-  const handleExport = () => {
-    if (orderedBenchmarks.length === 0) {
-      toast({
-        title: "Nada para exportar",
-        description: "Ajuste os filtros para selecionar benchmarks antes de exportar.",
-        variant: "destructive",
-      });
-      return;
+  const totalBenchmarks = orderedBenchmarks.length;
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalBenchmarks / ITEMS_PER_PAGE)),
+    [totalBenchmarks]
+  );
+
+  const paginatedBenchmarks = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return orderedBenchmarks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [orderedBenchmarks, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTask, selectedModel, selectedModelFamily, selectedTechnique, selectedBenchmark, rankingOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
+  }, [currentPage, totalPages]);
 
-    const exportPayload = orderedBenchmarks.map(benchmark => ({
+  const pageStart = totalBenchmarks === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const pageEnd = totalBenchmarks === 0 ? 0 : Math.min(pageStart + ITEMS_PER_PAGE - 1, totalBenchmarks);
+
+  const buildExportRows = () =>
+    orderedBenchmarks.map(benchmark => ({
       id: benchmark.id,
       model_path: benchmark.model_path,
       model_name: benchmark.model_name,
@@ -352,16 +378,18 @@ const Dashboard = () => {
       avg_seconds_per_example: benchmark.avg_seconds_per_example,
       out_dir: benchmark.out_dir,
       val_json: benchmark.val_json,
+      by_answer_type_serialized: benchmark.by_answer_type
+        ? JSON.stringify(benchmark.by_answer_type)
+        : null,
     }));
 
-    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], {
-      type: "application/json",
-    });
+  const downloadFile = (content: string, mimeType: string, extension: string, total: number) => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     link.href = url;
-    link.download = `benchmarks-export-${timestamp}.json`;
+    link.download = `benchmarks-export-${timestamp}.${extension}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -369,8 +397,71 @@ const Dashboard = () => {
 
     toast({
       title: "Exportação concluída",
-      description: `Exportados ${exportPayload.length} benchmark(s) para JSON.`,
+      description: `Exportados ${total} benchmark(s) para ${extension.toUpperCase()}.`,
     });
+  };
+
+  const ensureExportable = () => {
+    if (orderedBenchmarks.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Ajuste os filtros para selecionar benchmarks antes de exportar.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleExportJson = () => {
+    if (!ensureExportable()) return;
+    const rows = buildExportRows();
+    const json = JSON.stringify(rows, null, 2);
+    downloadFile(json, "application/json", "json", rows.length);
+  };
+
+  const handleExportCsv = () => {
+    if (!ensureExportable()) return;
+    const rows = buildExportRows();
+    const headers = [
+      "id",
+      "model_path",
+      "model_name",
+      "model_family",
+      "task",
+      "benchmark_name",
+      "technique",
+      "created_at",
+      "total",
+      "correct",
+      "accuracy_percent",
+      "mode",
+      "generated_max_new_tokens",
+      "stop_on_answer",
+      "runtime_seconds",
+      "avg_seconds_per_example",
+      "out_dir",
+      "val_json",
+      "by_answer_type_serialized",
+    ];
+    const escapeCsv = (value: unknown) => {
+      if (value === null || value === undefined) return "";
+      const stringValue = String(value);
+      if (/[",\n;]/.test(stringValue)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+    const csvLines = [
+      headers.join(";"),
+      ...rows.map(row =>
+        headers
+          .map(header => escapeCsv((row as Record<string, unknown>)[header]))
+          .join(";")
+      ),
+    ];
+    const csvContent = csvLines.join("\n");
+    downloadFile(csvContent, "text/csv;charset=utf-8", "csv", rows.length);
   };
 
   const averageScore = filteredBenchmarks.length > 0
@@ -485,13 +576,32 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={handleExport}
-                className="rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-primary/70 px-6 py-2 text-sm font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Exportar
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-primary/70 px-6 py-2 text-sm font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exportar
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl border border-white/10 bg-background/95 p-2 backdrop-blur">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      handleExportJson();
+                    }}
+                    className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-primary/10"
+                  >
+                    Exportar como JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      handleExportCsv();
+                    }}
+                    className="cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-foreground hover:bg-primary/10"
+                  >
+                    Exportar como CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -787,7 +897,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="grid gap-6">
-              {orderedBenchmarks.map(benchmark => {
+              {paginatedBenchmarks.map(benchmark => {
                   const answerType = getPrimaryAnswerType(benchmark);
                   const scoreDisplay = formatNumber(benchmark.accuracy_percent);
                   const accuracyDisplay = scoreDisplay;
@@ -948,7 +1058,35 @@ const Dashboard = () => {
                       </div>
                     </div>
                   );
-                })} 
+                })}
+              <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Mostrando {pageStart === 0 ? 0 : pageStart}–{pageEnd} de {totalBenchmarks} {totalBenchmarks === 1 ? "registro" : "registros"}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || totalBenchmarks === 0}
+                    className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Página {totalBenchmarks === 0 ? 0 : currentPage} de {totalBenchmarks === 0 ? 0 : totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || totalBenchmarks === 0}
+                    className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </section>

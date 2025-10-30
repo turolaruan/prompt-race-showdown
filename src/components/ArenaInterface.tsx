@@ -55,6 +55,10 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     "Crie uma receita de bolo de chocolate",
     "Explique a teoria da relatividade de Einstein",
     "Como funciona o algoritmo de ordenação quicksort?",
+    "Liste estratégias para otimizar um modelo de linguagem em produção",
+    "Sugira perguntas para uma entrevista de cientista de dados",
+    "Crie um plano de estudo de 7 dias sobre redes neurais",
+    "Explique como implementar autenticação segura em uma API"
   ];
   useEffect(() => {
     if (!activeChat) {
@@ -553,7 +557,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:gap-10 2xl:gap-12">
                 {turnOutputs.map((item, turnIndex) => {
                   const outputId = item.id;
                   const modelLabel = item.modelName || getModelDisplayName(item.modelId);
@@ -664,7 +668,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const renderPromptSection = (isDocked = false) => (
     <section
       className={cn(
-        "relative w-full max-w-4xl rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6",
+        "relative w-full max-w-[95rem] rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6",
         isDocked && "border-white/20 bg-background/90 shadow-[0_30px_90px_-50px_rgba(147,51,234,0.75)] backdrop-blur-xl"
       )}
     >
@@ -695,7 +699,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
               Escolha um dos prompts abaixo para preencher automaticamente o campo de entrada e iniciar um novo desafio.
             </p>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {promptSuggestions.map((suggestion, index) => (
               <button
                 key={`${suggestion}-${index}`}
@@ -741,7 +745,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   return (
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[98rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
+        <div className="mx-auto flex w-full max-w-[128rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
           <div className="flex-1 min-w-[260px] space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
             <h1 className="text-lg font-semibold text-foreground sm:text-xl">
@@ -761,7 +765,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       </div>
       {hasPromptInteraction ? (
         <div className="flex-1">
-          <div className="mx-auto w-full max-w-[98rem] px-4 py-6 sm:px-8 lg:px-12">
+          <div className="mx-auto w-full max-w-[128rem] px-4 py-6 sm:px-8 lg:px-12">
             <div className="flex flex-col gap-6">{renderResultsSections()}</div>
           </div>
         </div>
@@ -769,7 +773,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         <div className="flex-1">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-[98rem] flex-col gap-6 px-4 py-6 sm:px-8 lg:px-12",
+              "mx-auto flex w-full max-w-[128rem] flex-col gap-6 px-4 py-6 sm:px-8 lg:px-12",
               !hasAnyResponses && "min-h-[70vh] justify-center"
             )}
           >
