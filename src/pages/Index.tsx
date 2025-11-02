@@ -8,14 +8,14 @@ const Index = () => {
   const { collapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
 
   return (
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+    <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-background lg:flex-row">
       <AppSidebar
         collapsed={isSidebarCollapsed}
         onToggle={toggleSidebar}
         onStartNewChat={() => arenaRef.current?.startNewChat()}
         onSelectChat={chat => arenaRef.current?.loadChat(chat)}
       />
-      <main className="flex flex-1 flex-col">
+      <main className="flex flex-1 min-h-0 flex-col overflow-hidden">
         <ArenaInterface ref={arenaRef} />
       </main>
     </div>

@@ -68,7 +68,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
   return (
     <aside
       className={cn(
-        "w-full border-b border-sidebar-border bg-sidebar lg:flex lg:flex-col lg:border-b-0 lg:border-r transition-all duration-300",
+        "flex-shrink-0 w-full max-h-screen overflow-y-auto border-b border-sidebar-border bg-sidebar transition-all duration-300 lg:flex lg:h-screen lg:flex-col lg:max-h-none lg:overflow-y-hidden lg:border-b-0 lg:border-r",
         collapsed ? "lg:w-20" : "lg:w-80"
       )}
     >

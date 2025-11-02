@@ -606,7 +606,7 @@ const Dashboard = () => {
             <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Dashboard</p>
               <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Benchmark Center</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base text-muted-foreground/90 sm:text-lg">
                 Explore métricas, filtros e evolução dos modelos em diferentes tarefas.
               </p>
             </div>
@@ -657,8 +657,8 @@ const Dashboard = () => {
                     <Trophy className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{filteredBenchmarks.length}</div>
-                    <p className="text-xs text-muted-foreground">Resultados registrados após aplicar filtros</p>
+                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{filteredBenchmarks.length}</div>
+                    <p className="text-sm text-muted-foreground/90 sm:text-base">Resultados registrados após aplicar filtros</p>
                   </CardContent>
                 </Card>
 
@@ -670,8 +670,8 @@ const Dashboard = () => {
                     <TrendingUp className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{averageScore}</div>
-                    <p className="text-xs text-muted-foreground">Performance média considerando os resultados listados</p>
+                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{averageScore}</div>
+                    <p className="text-sm text-muted-foreground/90 sm:text-base">Performance média considerando os resultados listados</p>
                   </CardContent>
                 </Card>
 
@@ -683,8 +683,8 @@ const Dashboard = () => {
                     <BarChart3 className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-semibold text-foreground">{uniqueModels.length}</div>
-                    <p className="text-xs text-muted-foreground">Diversidade de modelos presentes no recorte atual</p>
+                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{uniqueModels.length}</div>
+                    <p className="text-sm text-muted-foreground/90 sm:text-base">Diversidade de modelos presentes no recorte atual</p>
                   </CardContent>
                 </Card>
               </div>
@@ -702,8 +702,8 @@ const Dashboard = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
                   Destaques
                 </p>
-                <h2 className="text-lg font-semibold text-foreground sm:text-xl">Top 3 modelos filtrados</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-xl font-semibold text-foreground sm:text-2xl">Top 3 modelos filtrados</h2>
+                <p className="text-base text-muted-foreground/90 sm:text-lg">
                   Destaque dos modelos com maior acurácia considerando os filtros ativos.
                 </p>
               </div>
@@ -757,7 +757,7 @@ const Dashboard = () => {
                             <p className="max-w-[220px] truncate text-lg font-semibold text-foreground" title={modelName}>
                               {modelName}
                             </p>
-                            <p className="text-xs text-muted-foreground">{taskLabel}</p>
+                            <p className="text-sm text-muted-foreground/80">{taskLabel}</p>
                           </div>
                         </div>
                         <span
@@ -994,7 +994,7 @@ const Dashboard = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground/80">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {formatDate(benchmark.created_at)}
@@ -1095,7 +1095,7 @@ const Dashboard = () => {
                   );
                 })}
               <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground/90">
                   Mostrando {pageStart === 0 ? 0 : pageStart}–{pageEnd} de {totalBenchmarks} {totalBenchmarks === 1 ? "registro" : "registros"}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">

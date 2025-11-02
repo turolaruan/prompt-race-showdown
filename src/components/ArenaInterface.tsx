@@ -473,7 +473,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Processando</p>
                 <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Gerando respostas...</h2>
-                <p className="max-w-3xl text-sm text-muted-foreground">
+                <p className="max-w-3xl text-base text-muted-foreground/90 sm:text-lg">
                   Prompt enviado:{" "}
                   <span className="font-medium text-primary/85">{pendingPrompt}</span>
                 </p>
@@ -482,7 +482,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
               <p className="mt-4 text-base font-semibold text-foreground">Consultando modelos...</p>
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              <p className="mt-2 max-w-md text-base text-muted-foreground/90 sm:text-lg">
                 Estamos analisando as respostas dos modelos selecionados. Isso pode levar alguns segundos.
               </p>
             </div>
@@ -599,7 +599,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                               Modelo {String.fromCharCode(65 + turnIndex)}
                             </CardTitle>
                             {shouldRevealModelLabel ? (
-                              <p className="text-sm text-muted-foreground">{modelLabel}</p>
+                              <p className="text-base text-muted-foreground/80">{modelLabel}</p>
                             ) : (
                               <p className="text-sm italic text-muted-foreground/70">
                                 Nome revelado após o voto
@@ -675,7 +675,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Envie um desafio</p>
-          <h3 className="text-lg font-semibold text-sidebar-foreground sm:text-xl">Compare respostas em segundos</h3>
+          <h3 className="text-xl font-semibold text-sidebar-foreground sm:text-2xl">Compare respostas em segundos</h3>
         </div>
         {outputsCount > 0 && (
           <span className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
@@ -684,7 +684,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         )}
       </div>
       {!hasAnyResponses && !isProcessing && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-base text-muted-foreground/90 sm:text-lg">
           Clique em alguma sugestão ou descreva seu próprio cenário no campo abaixo.
         </p>
       )}
@@ -695,7 +695,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
               Sugestões
             </p>
             <h4 className="text-lg font-semibold text-foreground sm:text-xl">Precisa de inspiração rápida?</h4>
-            <p className="text-sm text-muted-foreground/80">
+            <p className="text-base text-muted-foreground/90 sm:text-lg">
               Escolha um dos prompts abaixo para preencher automaticamente o campo de entrada e iniciar um novo desafio.
             </p>
           </div>
@@ -743,7 +743,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   );
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[128rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
           <div className="flex-1 min-w-[260px] space-y-1">
@@ -751,7 +751,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             <h1 className="text-lg font-semibold text-foreground sm:text-xl">
               Encontre a melhor IA para você
             </h1>
-            <p className="text-xs text-muted-foreground sm:text-sm">
+            <p className="text-base text-muted-foreground/90 sm:text-lg">
               Faça perguntas, compare respostas entre modelos e registre seu feedback.
             </p>
           </div>
@@ -764,24 +764,24 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         </div>
       </div>
       {hasPromptInteraction ? (
-        <div className="flex-1">
-          <div className="mx-auto w-full max-w-[128rem] px-4 py-6 sm:px-8 lg:px-12">
+        <div className="flex-1 min-h-0">
+          <div className="mx-auto flex h-full w-full max-w-[128rem] flex-col gap-6 px-4 py-5 pb-10 sm:px-8 lg:px-12">
             <div className="flex flex-col gap-6">{renderResultsSections()}</div>
           </div>
         </div>
       ) : (
-        <div className="flex-1">
+        <div className="flex-1 min-h-0">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-[128rem] flex-col gap-6 px-4 py-6 sm:px-8 lg:px-12",
-              !hasAnyResponses && "min-h-[70vh] justify-center"
+              "mx-auto flex h-full w-full max-w-[128rem] flex-col gap-6 px-4 py-5 sm:px-8 lg:px-12",
+              !hasAnyResponses && "justify-start"
             )}
           >
             <div className="flex flex-col gap-6">{renderResultsSections()}</div>
             <div
               className={cn(
                 "flex justify-center transition-all duration-300",
-                "pt-20 sm:pt-24"
+                "pt-8 sm:pt-12"
               )}
             >
               {renderPromptSection()}

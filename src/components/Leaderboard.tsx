@@ -568,7 +568,7 @@ const Leaderboard = () => {
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Leaderboard</p>
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Arena de Modelos</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base text-muted-foreground/90 sm:text-lg">
               Ranking atualizado com base nos votos da comunidade.
             </p>
           </div>
@@ -603,7 +603,7 @@ const Leaderboard = () => {
                   Modelos ativos
                 </p>
                 <p className="text-3xl font-semibold text-foreground">{totalEntries}</p>
-                <p className="text-xs text-muted-foreground">Modelos ranqueados com votos recebidos</p>
+                <p className="text-sm text-muted-foreground/90 sm:text-base">Modelos ranqueados com votos recebidos</p>
               </div>
               <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
@@ -611,7 +611,7 @@ const Leaderboard = () => {
                   Votos somados
                 </p>
                 <p className="text-3xl font-semibold text-foreground">{totalVotes}</p>
-                <p className="text-xs text-muted-foreground">Feedbacks registrados pelos usuários</p>
+                <p className="text-sm text-muted-foreground/90 sm:text-base">Feedbacks registrados pelos usuários</p>
               </div>
               <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
                 <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
@@ -619,7 +619,7 @@ const Leaderboard = () => {
                   Técnicas variadas
                 </p>
                 <p className="text-3xl font-semibold text-foreground">{uniqueTechniquesCount}</p>
-                <p className="text-xs text-muted-foreground">Estilos de treinamento aplicados</p>
+                <p className="text-sm text-muted-foreground/90 sm:text-base">Estilos de treinamento aplicados</p>
               </div>
             </div>
           </section>
@@ -628,7 +628,7 @@ const Leaderboard = () => {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Filtros</p>
-                <h2 className="text-lg font-semibold text-foreground">Personalize sua visão</h2>
+                <h2 className="text-xl font-semibold text-foreground sm:text-2xl">Personalize sua visão</h2>
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -719,7 +719,7 @@ const Leaderboard = () => {
                       <div className="space-y-2">
                         <div className="space-y-1">
                           <p className="text-lg font-semibold text-foreground">{primaryLabel}</p>
-                          <p className="text-xs text-muted-foreground">{entry.modelId}</p>
+                          <p className="text-sm text-muted-foreground/80">{entry.modelId}</p>
                         </div>
                         {badges.length > 0 && (
                           <div className="flex flex-wrap items-center gap-2">
@@ -760,7 +760,7 @@ const Leaderboard = () => {
             )}
             {totalEntries > 0 && (
               <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground/90">
                   Mostrando {pageStart === 0 ? 0 : pageStart}–{pageEnd} de {totalEntries} {totalEntries === 1 ? "voto" : "votos"}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
