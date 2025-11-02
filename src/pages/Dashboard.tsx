@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu, ChevronLeft, ChevronRight } from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
@@ -184,7 +183,6 @@ const Dashboard = () => {
   const [selectedBenchmark, setSelectedBenchmark] = useState<string>("all");
   const [rankingOrder, setRankingOrder] = useState<"desc" | "asc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("1");
 
   const resolveModelName = useCallback((benchmark: BenchmarkDetails) => {
     return benchmark.model_name ?? inferModelNameFromPath(benchmark.model_path) ?? "Modelo desconhecido";
@@ -358,39 +356,6 @@ const Dashboard = () => {
 
   const pageStart = totalBenchmarks === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
   const pageEnd = totalBenchmarks === 0 ? 0 : Math.min(pageStart + ITEMS_PER_PAGE - 1, totalBenchmarks);
-
-  const goToPage = (pageNumber: number) => {
-    if (totalBenchmarks === 0) return;
-    const sanitized = Math.min(Math.max(1, Math.trunc(pageNumber)), totalPages);
-    setCurrentPage(sanitized);
-  };
-
-  useEffect(() => {
-    if (totalBenchmarks === 0) {
-      setPageInput("0");
-    } else {
-      setPageInput(String(currentPage));
-    }
-  }, [currentPage, totalBenchmarks]);
-
-  const handlePageInputChange = (value: string) => {
-    const sanitized = value.replace(/[^0-9]/g, "");
-    setPageInput(sanitized);
-  };
-
-  const commitPageInput = () => {
-    if (totalBenchmarks === 0) return;
-    if (!pageInput) {
-      setPageInput(String(currentPage));
-      return;
-    }
-    const parsed = Number(pageInput);
-    if (Number.isFinite(parsed)) {
-      goToPage(parsed);
-    } else {
-      setPageInput(String(currentPage));
-    }
-  };
 
   const buildExportRows = () =>
     orderedBenchmarks.map(benchmark => ({
@@ -1098,62 +1063,28 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">
                   Mostrando {pageStart === 0 ? 0 : pageStart}–{pageEnd} de {totalBenchmarks} {totalBenchmarks === 1 ? "registro" : "registros"}
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || totalBenchmarks === 0}
-                      className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Página {totalBenchmarks === 0 ? 0 : currentPage} de {totalBenchmarks === 0 ? 0 : totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages || totalBenchmarks === 0}
-                      className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
-                      Ir para
-                    </span>
-                    <div className="flex items-center gap-2 rounded-full border border-white/15 bg-background/70 px-3 py-1 shadow-[0_12px_40px_-25px_rgba(147,51,234,0.45)]">
-                      <Input
-                        value={pageInput}
-                        onChange={event => handlePageInputChange(event.target.value)}
-                        onKeyDown={event => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            commitPageInput();
-                          }
-                        }}
-                        disabled={totalBenchmarks === 0}
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        className="h-7 w-16 border-0 bg-transparent px-0 text-center text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-0"
-                        aria-label="Ir para página específica"
-                      />
-                      <span className="text-[11px] text-muted-foreground/70">/ {totalBenchmarks === 0 ? 0 : totalPages}</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={commitPageInput}
-                      disabled={totalBenchmarks === 0}
-                      className="rounded-full border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground hover:text-primary"
-                    >
-                      Ir
-                    </Button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || totalBenchmarks === 0}
+                    className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Página {totalBenchmarks === 0 ? 0 : currentPage} de {totalBenchmarks === 0 ? 0 : totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || totalBenchmarks === 0}
+                    className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>

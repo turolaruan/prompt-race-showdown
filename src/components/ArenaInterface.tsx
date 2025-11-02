@@ -751,7 +751,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             <h1 className="text-lg font-semibold text-foreground sm:text-xl">
               Encontre a melhor IA para você
             </h1>
-            <p className="text-sm text-muted-foreground sm:text-base">
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Faça perguntas, compare respostas entre modelos e registre seu feedback.
             </p>
           </div>
