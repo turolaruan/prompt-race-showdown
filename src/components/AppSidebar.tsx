@@ -68,7 +68,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
   return (
     <aside
       className={cn(
-        "flex-shrink-0 w-full max-h-screen overflow-y-auto border-b border-sidebar-border bg-sidebar transition-all duration-300 lg:flex lg:h-screen lg:flex-col lg:max-h-none lg:overflow-y-hidden lg:border-b-0 lg:border-r",
+        "flex-shrink-0 w-full min-h-screen overflow-y-auto border-b border-sidebar-border bg-sidebar transition-all duration-300 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:sticky lg:top-0 lg:self-start",
         collapsed ? "lg:w-20" : "lg:w-80"
       )}
     >
@@ -194,6 +194,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                 )}
                 {historyItems.map(chat => {
                   const activeChat = currentChatId === chat.id;
+                  const isChatActive = isArena && activeChat;
                   const handleClick = () => {
                     setCurrentChat(chat.id);
                     if (onSelectChat) {
@@ -209,7 +210,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                       onClick={handleClick}
                       className={cn(
                         "w-full rounded-xl border border-transparent bg-white/0 px-3 py-3 text-left transition hover:border-primary/30 hover:bg-primary/5",
-                        activeChat && "border-primary/40 bg-primary/10"
+                        isChatActive && "border-primary/40 bg-primary/10"
                       )}
                     >
                       <p className="truncate text-sm font-medium text-sidebar-foreground">

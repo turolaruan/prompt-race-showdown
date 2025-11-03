@@ -5,7 +5,22 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { BarChart3, Trophy, TrendingUp, Download, Activity, Timer, Calendar, Cpu, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  BarChart3,
+  Trophy,
+  TrendingUp,
+  Download,
+  Activity,
+  Timer,
+  Calendar,
+  Cpu,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  ArrowUpRight,
+  ArrowDownRight,
+  ListOrdered,
+} from "lucide-react";
 import AppSidebar from "@/components/AppSidebar";
 import { BenchmarkDetails, AnswerTypeStats } from "@/lib/mockBenchmarks";
 import evalResultsArray from "../../eval_results_array.json";
@@ -185,6 +200,10 @@ const Dashboard = () => {
   const [rankingOrder, setRankingOrder] = useState<"desc" | "asc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
+  const [selectedAverageModel, setSelectedAverageModel] = useState<string | null>(null);
+  const [benchmarkViewMode, setBenchmarkViewMode] = useState<"list" | "models">("list");
+  const isListView = benchmarkViewMode === "list";
+  const isModelView = benchmarkViewMode === "models";
 
   const resolveModelName = useCallback((benchmark: BenchmarkDetails) => {
     return benchmark.model_name ?? inferModelNameFromPath(benchmark.model_path) ?? "Modelo desconhecido";
@@ -555,6 +574,43 @@ const Dashboard = () => {
       .sort((a, b) => b.average - a.average);
   }, [benchmarksForAverages, resolveModelName, resolveBenchmark]);
 
+  useEffect(() => {
+    if (modelAverageStats.length === 0) {
+      setSelectedAverageModel(null);
+      return;
+    }
+    const hasSelection =
+      selectedAverageModel && modelAverageStats.some(stat => stat.modelName === selectedAverageModel);
+    if (!hasSelection) {
+      setSelectedAverageModel(modelAverageStats[0]?.modelName ?? null);
+    }
+  }, [modelAverageStats, selectedAverageModel]);
+
+  const selectedAverageModelStats = useMemo(() => {
+    if (modelAverageStats.length === 0) return null;
+    const target = selectedAverageModel ?? modelAverageStats[0]?.modelName;
+    if (!target) return null;
+    return modelAverageStats.find(stat => stat.modelName === target) ?? modelAverageStats[0] ?? null;
+  }, [modelAverageStats, selectedAverageModel]);
+
+  const averageModelSelectValue = selectedAverageModel ?? (modelAverageStats[0]?.modelName ?? "");
+
+  const selectedAverageModelBenchmarks = useMemo(() => {
+    if (!selectedAverageModelStats) return [];
+
+    return benchmarksForAverages
+      .filter(benchmark => resolveModelName(benchmark) === selectedAverageModelStats.modelName)
+      .map(benchmark => ({
+        id: benchmark.id,
+        benchmarkName: resolveBenchmark(benchmark) ?? "Benchmark desconhecido",
+        accuracy: typeof benchmark.accuracy_percent === "number" ? benchmark.accuracy_percent : 0,
+        createdAt: benchmark.created_at ?? null,
+        correct: typeof benchmark.correct === "number" ? benchmark.correct : null,
+        total: typeof benchmark.total === "number" ? benchmark.total : null,
+      }))
+      .sort((a, b) => b.accuracy - a.accuracy);
+  }, [benchmarksForAverages, resolveBenchmark, resolveModelName, selectedAverageModelStats]);
+
   const formatNumber = (value?: number | null, fractionDigits = 2) => {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return "—";
@@ -691,7 +747,7 @@ const Dashboard = () => {
             </section>
 
         {/* Top 3 Models */}
-        {topModels.length > 0 && (
+        {isListView && topModels.length > 0 && (
           <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-primary/10 via-background/85 to-background p-6 shadow-[0_40px_120px_-70px_rgba(147,51,234,0.6)] sm:p-8">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute -top-24 right-24 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
@@ -908,23 +964,193 @@ const Dashboard = () => {
         {/* Benchmarks Table */}
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_32px_110px_-70px_rgba(147,51,234,0.58)] sm:p-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
+            <div className="space-y-1">
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
-                Resultados detalhados
+                {isListView ? "Resultados detalhados" : "Visão agregada"}
               </p>
-              <h3 className="text-lg font-semibold text-foreground sm:text-xl">Benchmarks por modelo</h3>
+              <h3 className="text-lg font-semibold text-foreground sm:text-xl">
+                {isListView ? "Benchmarks por modelo" : "Média de performance por modelo"}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Consulte métricas individuais, tempos de execução e classificações.
+                {isListView
+                  ? "Consulte métricas individuais, tempos de execução e classificações."
+                  : "Compare médias de acurácia e identifique destaques de cada modelo."}
               </p>
             </div>
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-muted-foreground">
-              {orderedBenchmarks.length} {orderedBenchmarks.length === 1 ? "registro" : "registros"}
+            <div className="flex flex-wrap items-center gap-3">
+              {isListView && (
+                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-muted-foreground">
+                  {orderedBenchmarks.length} {orderedBenchmarks.length === 1 ? "registro" : "registros"}
+                </div>
+              )}
+              {isModelView && modelAverageStats.length > 0 && (
+                <Select value={averageModelSelectValue} onValueChange={value => setSelectedAverageModel(value)}>
+                  <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground md:w-64">
+                    <SelectValue placeholder="Selecionar modelo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modelAverageStats.map(stat => (
+                      <SelectItem key={stat.modelName} value={stat.modelName}>
+                        {stat.modelName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBenchmarkViewMode("list")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em]",
+                    isListView
+                      ? "bg-primary text-primary-foreground shadow-[0_18px_50px_-30px_rgba(147,51,234,0.6)] hover:bg-primary"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  <ListOrdered className="h-3.5 w-3.5" />
+                  Lista
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBenchmarkViewMode("models")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em]",
+                    isModelView
+                      ? "bg-primary text-primary-foreground shadow-[0_18px_50px_-30px_rgba(147,51,234,0.6)] hover:bg-primary"
+                      : "text-muted-foreground hover:text-primary"
+                  )}
+                >
+                  <Gauge className="h-3.5 w-3.5" />
+                  Média
+                </Button>
+              </div>
             </div>
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-primary" />
             </div>
+          ) : isModelView ? (
+            modelAverageStats.length === 0 || !selectedAverageModelStats ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <p>Nenhum dado agregado disponível para os filtros atuais.</p>
+                <p className="mt-2 text-sm">Ajuste os filtros ou importe novos resultados.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <Card className="border border-white/10 bg-gradient-to-br from-primary/15 via-primary/5 to-background/90 shadow-[0_24px_90px_-65px_rgba(147,51,234,0.55)] backdrop-blur">
+                  <CardHeader className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                        Resumo do modelo
+                      </CardTitle>
+                      <Badge className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground backdrop-blur">
+                        {selectedAverageModelStats.modelName}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground/80">
+                      Média calculada com {selectedAverageModelStats.benchmarkCount}{" "}
+                      {selectedAverageModelStats.benchmarkCount === 1 ? "benchmark" : "benchmarks"} filtrados.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/80">
+                          Média de acurácia
+                        </p>
+                        <Gauge className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
+                        {formatPercentage(selectedAverageModelStats.average)}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground/75">
+                        Cobertura de {selectedAverageModelBenchmarks.length}{" "}
+                        {selectedAverageModelBenchmarks.length === 1 ? "benchmark" : "benchmarks"} avaliados.
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                          <ArrowUpRight className="h-3.5 w-3.5" />
+                          Melhor benchmark
+                        </p>
+                        <p className="mt-3 text-sm font-semibold text-foreground">
+                          {formatLabel(selectedAverageModelStats.best?.name, "—")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatPercentage(selectedAverageModelStats.best?.accuracy)} de acurácia
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                          <ArrowDownRight className="h-3.5 w-3.5" />
+                          Ponto de atenção
+                        </p>
+                        <p className="mt-3 text-sm font-semibold text-foreground">
+                          {formatLabel(selectedAverageModelStats.worst?.name, "—")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatPercentage(selectedAverageModelStats.worst?.accuracy)} de acurácia
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                      Desempenho por benchmark
+                    </CardTitle>
+                    <Activity className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {selectedAverageModelBenchmarks.length === 0 ? (
+                      <p className="text-sm text-muted-foreground/80">
+                        Nenhum registro detalhado disponível para este modelo.
+                      </p>
+                    ) : (
+                      selectedAverageModelBenchmarks.slice(0, 8).map(item => {
+                        const formattedName = formatLabel(item.benchmarkName, "—");
+                        const accuracyLabel = formatPercentage(item.accuracy);
+                        const attemptsLabel =
+                          typeof item.correct === "number" && typeof item.total === "number"
+                            ? `${item.correct} / ${item.total}`
+                            : null;
+
+                        return (
+                          <div
+                            key={`${item.id ?? item.benchmarkName}`}
+                            className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-foreground">{formattedName}</p>
+                              {item.createdAt ? (
+                                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">
+                                  {`Rodado em ${formatDate(item.createdAt)}`}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-foreground">{accuracyLabel}</p>
+                              {attemptsLabel && (
+                                <p className="text-[11px] text-muted-foreground/80">{attemptsLabel}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )
           ) : filteredBenchmarks.length === 0 ? (
             <div className="py-12 text-center text-muted-foreground">
               <p>Nenhum benchmark encontrado.</p>
