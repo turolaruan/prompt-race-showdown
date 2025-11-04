@@ -12,6 +12,34 @@ import { useChatHistory } from "@/context/ChatHistoryContext";
 import type { ChatHistoryEntry, ChatTurn, ChatTurnOutput } from "@/context/ChatHistoryContext";
 import { cn } from "@/lib/utils";
 
+const PROMPT_SUGGESTIONS_BY_TASK: Record<string, string[]> = {
+  strategy_qa: [
+    "Você é um conselheiro presidencial. Como equilibrar segurança nacional e liberdades civis diante de uma nova ameaça?",
+    "Um time de vendas precisa priorizar clientes. Monte uma estratégia para maximizar receita e relacionamento a longo prazo.",
+    "Uma ONG possui orçamento limitado para campanhas climáticas. Decida onde investir primeiro e justifique a escolha.",
+  ],
+  math_qa: [
+    "Explique como resolver um sistema de equações lineares com duas incógnitas narrando o raciocínio.",
+    "Interprete uma questão de matemática financeira descrevendo cada etapa antes de calcular o resultado final.",
+    "Um problema pede o perímetro de um triângulo isósceles descrito em texto. Mostre como extrair os dados e resolver.",
+  ],
+  aqua_rat: [
+    "Resolva: Se 3x + 5 = 20, qual o valor de x? Mostre o raciocínio algébrico passo a passo.",
+    "Em uma loja, um produto sofre dois descontos sucessivos de 10% e 5%. Qual o desconto total aplicado?",
+    "Determine o valor de x em 2(x - 4) = 3x + 1 e explique cada transformação algébrica usada.",
+  ],
+  gsm8k: [
+    "Um estudante percorre 120 km em 2 horas. Qual sua velocidade média? Resolva com linguagem acessível ao ensino médio.",
+    "Uma prova possui 20 questões valendo 5 pontos cada. Quantos pontos são necessários para atingir 75% de aproveitamento?",
+    "Calcule a área de um retângulo com lados descritos em frase: um tem 8 m e o outro é 3 m maior.",
+  ],
+  esnli: [
+    "Leia o parágrafo fornecido e produza um resumo com foco na conclusão apresentada.",
+    "Analise duas frases e determine se uma implica, contradiz ou é neutra em relação à outra, justificando.",
+    "Transforme um texto jornalístico de 200 palavras em um resumo de até 3 frases que mantenha o sentido principal.",
+  ],
+};
+
 export interface ArenaInterfaceHandle {
   startNewChat: () => void;
   loadChat: (chat: ChatHistoryEntry) => void;
@@ -48,18 +76,22 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
     [chatHistory, currentChatId]
   );
-  const promptSuggestions = [
-    "Explique como funciona a inteligência artificial",
-    "Escreva um código Python para calcular fibonacci",
-    "Qual é a diferença entre machine learning e deep learning?",
-    "Crie uma receita de bolo de chocolate",
-    "Explique a teoria da relatividade de Einstein",
-    "Como funciona o algoritmo de ordenação quicksort?",
-    "Liste estratégias para otimizar um modelo de linguagem em produção",
-    "Sugira perguntas para uma entrevista de cientista de dados",
-    "Crie um plano de estudo de 7 dias sobre redes neurais",
-    "Explique como implementar autenticação segura em uma API"
-  ];
+  const promptSuggestions = useMemo(() => {
+    const tasks = Object.keys(PROMPT_SUGGESTIONS_BY_TASK);
+    const shuffledTasks = [...tasks].sort(() => Math.random() - 0.5);
+    const suggestions: string[] = [];
+
+    shuffledTasks.forEach(task => {
+      const prompts = PROMPT_SUGGESTIONS_BY_TASK[task];
+      if (!Array.isArray(prompts) || prompts.length === 0) return;
+      const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+      if (randomPrompt) {
+        suggestions.push(randomPrompt);
+      }
+    });
+
+    return suggestions;
+  }, [currentChatId, conversation.length]);
   useEffect(() => {
     if (!activeChat) {
       setConversation([]);

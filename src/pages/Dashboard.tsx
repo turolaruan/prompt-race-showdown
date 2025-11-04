@@ -611,6 +611,14 @@ const Dashboard = () => {
       .sort((a, b) => b.accuracy - a.accuracy);
   }, [benchmarksForAverages, resolveBenchmark, resolveModelName, selectedAverageModelStats]);
 
+  const modelAverageOptions = useMemo(
+    () =>
+      [...modelAverageStats].sort((a, b) =>
+        a.modelName.localeCompare(b.modelName, undefined, { sensitivity: "accent" })
+      ),
+    [modelAverageStats]
+  );
+
   const formatNumber = (value?: number | null, fractionDigits = 2) => {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return "—";
@@ -983,13 +991,13 @@ const Dashboard = () => {
                   {orderedBenchmarks.length} {orderedBenchmarks.length === 1 ? "registro" : "registros"}
                 </div>
               )}
-              {isModelView && modelAverageStats.length > 0 && (
+              {isModelView && modelAverageOptions.length > 0 && (
                 <Select value={averageModelSelectValue} onValueChange={value => setSelectedAverageModel(value)}>
                   <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground md:w-64">
                     <SelectValue placeholder="Selecionar modelo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {modelAverageStats.map(stat => (
+                    {modelAverageOptions.map(stat => (
                       <SelectItem key={stat.modelName} value={stat.modelName}>
                         {stat.modelName}
                       </SelectItem>
