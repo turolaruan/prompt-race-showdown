@@ -373,11 +373,7 @@ const Leaderboard = () => {
   );
 
   const taskOptions = KNOWN_TASKS;
-  const modelFamilyOptions = mergeOptions(
-    KNOWN_MODEL_FAMILIES,
-    uniqueModelFamilies.filter(family => !KNOWN_MODEL_FAMILIES.includes(family)),
-    DISALLOWED_MODEL_FAMILIES
-  );
+  const modelFamilyOptions = KNOWN_MODEL_FAMILIES;
   const techniqueOptions = mergeOptions(
     KNOWN_TECHNIQUES,
     uniqueTechniques.filter(tech => !KNOWN_TECHNIQUES.includes(tech)),
