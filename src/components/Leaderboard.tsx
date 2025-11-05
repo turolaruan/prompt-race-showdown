@@ -66,6 +66,11 @@ type ArenaVoteRow = Database["public"]["Tables"]["arena_votes"]["Row"] & {
   benchmark_task?: string | null;
 };
 
+const normalizeForComparison = (value?: string | null): string => {
+  if (!value) return "";
+  return value.toLowerCase().replace(/[\s_-]/g, "");
+};
+
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
   if (!modelPath) return null;
   const parts = modelPath.split("/").filter(Boolean);
@@ -388,7 +393,12 @@ const Leaderboard = () => {
       const normalizedEntryTask = entry.task;
       if (normalizedEntryTask !== normalizedFilterTask) return false;
     }
-    if (filterModelFamily !== "all" && entry.modelFamily !== filterModelFamily) return false;
+    if (filterModelFamily !== "all") {
+      // Normalize both values for comparison (case-insensitive, ignore spaces/hyphens/underscores)
+      const normalizedFilter = normalizeForComparison(filterModelFamily);
+      const normalizedEntry = normalizeForComparison(entry.modelFamily);
+      if (normalizedEntry !== normalizedFilter) return false;
+    }
     return true;
   });
 
