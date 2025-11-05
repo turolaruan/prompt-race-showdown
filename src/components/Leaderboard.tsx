@@ -54,7 +54,7 @@ interface ModelMetadata {
   benchmark: string | null;
 }
 
-const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
+const KNOWN_TASKS = ["aqua_ret", "esnli", "gsm8k", "math_qa", "strategy_qa"];
 const ITEMS_PER_PAGE = 5;
 type ArenaVoteRow = Database["public"]["Tables"]["arena_votes"]["Row"] & {
   model_family?: string | null;
@@ -372,11 +372,7 @@ const Leaderboard = () => {
     new Set(leaderboardData.map(entry => entry.modelFamily).filter(Boolean))
   );
 
-  const taskOptions = mergeOptions(
-    KNOWN_TASKS,
-    uniqueTasks.filter(task => !KNOWN_TASKS.includes(task)),
-    DISALLOWED_TASKS
-  );
+  const taskOptions = KNOWN_TASKS;
   const modelFamilyOptions = mergeOptions(
     KNOWN_MODEL_FAMILIES,
     uniqueModelFamilies.filter(family => !KNOWN_MODEL_FAMILIES.includes(family)),
