@@ -387,7 +387,11 @@ const Leaderboard = () => {
   // Filter data
   const filteredData = leaderboardData.filter(entry => {
     if (filterTechnique !== "all" && entry.technique !== filterTechnique) return false;
-    if (filterTask !== "all" && entry.task !== filterTask) return false;
+    if (filterTask !== "all") {
+      const normalizedFilterTask = formatLabel(filterTask);
+      const normalizedEntryTask = entry.task;
+      if (normalizedEntryTask !== normalizedFilterTask) return false;
+    }
     if (filterModelFamily !== "all" && entry.modelFamily !== filterModelFamily) return false;
     return true;
   });
@@ -636,7 +640,7 @@ const Leaderboard = () => {
                   <SelectItem value="all">Todas as Tarefas</SelectItem>
                   {taskOptions.map(task => (
                     <SelectItem key={task} value={task}>
-                      {task}
+                      {formatLabel(task)}
                     </SelectItem>
                   ))}
                 </SelectContent>
