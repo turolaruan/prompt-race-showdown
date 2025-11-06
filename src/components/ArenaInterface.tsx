@@ -3,9 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Loader2, Send, Trophy, Timer, ThumbsUp, Lightbulb, X } from "lucide-react";
+import { Loader2, Send, Trophy, Timer, ThumbsUp, Sparkles, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useChatHistory } from "@/context/ChatHistoryContext";
@@ -40,6 +38,67 @@ const PROMPT_SUGGESTIONS_BY_TASK: Record<string, string[]> = {
   ],
 };
 
+interface VirtualModelApiResult {
+  model: string;
+  model_name?: string;
+  response: string;
+  inference_seconds?: number | null;
+}
+
+interface VirtualApiResponse {
+  results: VirtualModelApiResult[];
+}
+
+type ChoiceMessagePart =
+  | string
+  | {
+      text?: string;
+      content?: string;
+    }
+  | null
+  | undefined;
+
+const normalizeApiResults = (
+  payload: VirtualApiResponse | VirtualModelApiResult[] | null | undefined
+): VirtualModelApiResult[] => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && Array.isArray(payload.results)) {
+    return payload.results;
+  }
+  return [];
+};
+
+const OPENAI_VIRTUAL_MODELS = [
+  {
+    id: "openai/gpt-4.1-mini-analitico",
+    name: "GPT-4.1 Mini Analítico",
+    systemInstruction:
+      "Você é um especialista analítico. Estruture respostas em tópicos claros, justificando cada ponto com lógica e dados quando possível.",
+    temperature: 0.6,
+  },
+  {
+    id: "openai/gpt-4.1-mini-criativo",
+    name: "GPT-4.1 Mini Criativo",
+    systemInstruction:
+      "Você é um comunicador criativo. Traga analogias, exemplos e um tom envolvente, mantendo a precisão das informações.",
+    temperature: 0.8,
+  },
+] as const;
+
+const SUGGESTION_CARD_ACCENTS = [
+  "bg-gradient-to-br from-primary/25 via-primary/10 to-transparent",
+  "bg-gradient-to-br from-purple-500/20 via-primary/10 to-transparent",
+  "bg-gradient-to-br from-blue-500/15 via-sky-500/10 to-transparent",
+  "bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent",
+] as const;
+
+const EXTRA_PROMPT_SUGGESTION =
+  "Qual estratégia de IA você recomenda para diminuir churn em uma plataforma de assinatura?";
+
+const ARENA_CONTAINER = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10";
+
 export interface ArenaInterfaceHandle {
   startNewChat: () => void;
   loadChat: (chat: ChatHistoryEntry) => void;
@@ -71,7 +130,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [votedFor, setVotedFor] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ChatTurn[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
-  const [useMockData, setUseMockData] = useState(false);
+  const [useMockData] = useState(false);
   const activeChat = useMemo(
     () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
     [chatHistory, currentChatId]
@@ -212,7 +271,12 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   useEffect(() => {
     restoreVoteState(latestTurn ?? null);
   }, [latestTurn, restoreVoteState]);
-  const generateMockResponse = async (prompt: string): Promise<any> => {
+  const handleSuggestionSelect = (suggestion: string) => {
+    if (!suggestion) return;
+    setPrompt(suggestion);
+  };
+
+  const generateMockResponse = async (prompt: string): Promise<VirtualApiResponse> => {
     // Simular delay da API
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
     
@@ -226,7 +290,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       `Resposta mock gerada: ${prompt}. Esta resposta demonstra capacidades avançadas de compreensão de linguagem natural e geração de texto contextualizado. Os modelos de linguagem são treinados em bilhões de parâmetros para fornecer respostas precisas e relevantes ao contexto fornecido pelo usuário.`
     ];
 
-    const results = mockModels.map((model, index) => ({
+    const results: VirtualModelApiResult[] = mockModels.map((model, index) => ({
       model: model.id,
       response: mockResponses[index],
       inference_seconds: 0.5 + Math.random() * 2
@@ -235,54 +299,97 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     return { results };
   };
 
-  const sendPromptToEndpoint = async (prompt: string): Promise<any> => {
-    const configuredBase = import.meta.env.VITE_API_TCC_BASE_URL?.trim();
-    const baseWithoutTrailingSlash = configuredBase?.replace(/\/$/, "");
-    const endpoint =
-      baseWithoutTrailingSlash && baseWithoutTrailingSlash.length > 0
-        ? baseWithoutTrailingSlash.endsWith("/infer")
-          ? baseWithoutTrailingSlash
-          : `${baseWithoutTrailingSlash}/infer`
-        : "http://localhost:8000/infer";
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    const forwardedHost = import.meta.env.VITE_API_TCC_FORWARD_HOST?.trim();
-    if (forwardedHost) {
-      headers["X-Forwarded-Host"] = forwardedHost;
+  const sendPromptToEndpoint = async (prompt: string): Promise<VirtualApiResponse> => {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      throw new Error(
+        "A chave da API da OpenAI não está configurada (VITE_OPENAI_API_KEY)."
+      );
     }
+    const configuredBaseRaw = import.meta.env.VITE_OPENAI_BASE_URL;
+    const configuredBase =
+      configuredBaseRaw && configuredBaseRaw.trim().length > 0
+        ? configuredBaseRaw.trim().replace(/\/$/, "")
+        : null;
+    const openAiBaseUrl =
+      configuredBase && configuredBase.length > 0 ? configuredBase : "https://api.openai.com/v1";
+    const endpoint = `${openAiBaseUrl}/chat/completions`;
+
+    const requestHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    };
+    const now = () =>
+      typeof performance !== "undefined" && typeof performance.now === "function"
+        ? performance.now()
+        : Date.now();
+
+    const results: VirtualModelApiResult[] = [];
+
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          prompt: prompt
-        })
-      });
-      if (!response.ok) {
-        const responseText = await response.text();
-        throw new Error(
-          `HTTP error! status: ${response.status}${
-            responseText ? ` - ${responseText.slice(0, 200)}` : ""
-          }`
-        );
+      for (const variant of OPENAI_VIRTUAL_MODELS) {
+        const requestStart = now();
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: requestHeaders,
+          body: JSON.stringify({
+            model: "gpt-4.1-mini",
+            temperature: variant.temperature,
+            messages: [
+              {
+                role: "system",
+                content: variant.systemInstruction,
+              },
+              {
+                role: "user",
+                content: prompt,
+              },
+            ],
+            max_tokens: 800,
+          }),
+        });
+
+        const elapsed = now() - requestStart;
+
+        if (!response.ok) {
+          const responseText = await response.text();
+          throw new Error(
+            `HTTP error! status: ${response.status}${
+              responseText ? ` - ${responseText.slice(0, 200)}` : ""
+            }`
+          );
+        }
+
+        const data = await response.json();
+        const choiceMessage = data?.choices?.[0]?.message;
+        let choiceContent = "";
+        if (typeof choiceMessage?.content === "string") {
+          choiceContent = choiceMessage.content.trim();
+        } else if (Array.isArray(choiceMessage?.content)) {
+          choiceContent = choiceMessage.content
+            .map((part: ChoiceMessagePart) => {
+              if (typeof part === "string") return part;
+              if (part && typeof part === "object") {
+                if (typeof part.text === "string") return part.text;
+                if (typeof part.content === "string") return part.content;
+              }
+              return "";
+            })
+            .join("")
+            .trim();
+        }
+
+        results.push({
+          model: variant.id,
+          model_name: variant.name,
+          response: choiceContent || "Resposta não disponível",
+          inference_seconds: Math.max(elapsed / 1000, 0),
+        });
       }
-      const contentType = response.headers.get("content-type") ?? "";
-      if (contentType.includes("application/json")) {
-        return await response.json();
-      }
-      const responseText = await response.text();
-      try {
-        return JSON.parse(responseText);
-      } catch {
-        throw new Error(
-          responseText
-            ? `Não foi possível interpretar a resposta da API (${responseText.slice(0, 200)})`
-            : "Não foi possível interpretar a resposta da API."
-        );
-      }
+
+      return { results };
     } catch (error) {
-      console.error("Error sending prompt to endpoint:", error);
+      console.error("Error sending prompt to OpenAI:", error);
       throw error;
     }
   };
@@ -324,18 +431,18 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         : await sendPromptToEndpoint(currentPrompt);
       console.log("API TCC response:", apiResponse);
       const totalDuration = Math.round(now() - requestStart);
-      const results = Array.isArray(apiResponse)
-        ? apiResponse
-        : Array.isArray(apiResponse?.results)
-          ? apiResponse.results
-          : [];
+      const results = normalizeApiResults(apiResponse);
       if (results.length === 0) {
         throw new Error("Nenhuma resposta retornada pela API TCC.");
       }
-      const processedOutputs: ChatTurnOutput[] = results.map((result: any, index: number) => {
+      const processedOutputs: ChatTurnOutput[] = results.map((result: VirtualModelApiResult, index: number) => {
         const outputId = `output${index + 1}`;
         const rawModelId = typeof result?.model === "string" ? result.model : outputId;
-        const modelName = getModelDisplayName(rawModelId);
+        const providedModelName =
+          typeof result?.model_name === "string" && result.model_name.trim().length > 0
+            ? result.model_name.trim()
+            : null;
+        const modelName = providedModelName ?? getModelDisplayName(rawModelId);
         const inferenceSeconds =
           typeof result?.inference_seconds === "number" ? result.inference_seconds : null;
         const responseText =
@@ -697,130 +804,127 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     </>
   );
 
-  const renderPromptSection = (isDocked = false) => (
-    <section
-      className={cn(
-        "relative w-full max-w-[95rem] rounded-3xl border border-white/10 bg-white/5 p-4 shadow-[0_30px_80px_-50px_rgba(147,51,234,0.6)] sm:p-6",
-        isDocked && "border-white/20 bg-background/90 shadow-[0_30px_90px_-50px_rgba(147,51,234,0.75)] backdrop-blur-xl"
-      )}
-    >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Envie um desafio</p>
-          <h3 className="text-xl font-semibold text-sidebar-foreground sm:text-2xl">Compare respostas em segundos</h3>
+  const renderPromptSection = () => {
+    const baseSuggestions = promptSuggestions.slice(0, 5);
+    const suggestionsSet = new Set<string>(baseSuggestions);
+    suggestionsSet.add(EXTRA_PROMPT_SUGGESTION);
+    const suggestions = Array.from(suggestionsSet).slice(0, 6);
+
+    return (
+      <section className="mx-auto flex w-full max-w-4xl flex-col items-center space-y-6 text-center">
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
+          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
+            Encontre a melhor IA para você
+          </h1>
+          <p className="text-sm text-muted-foreground/90 sm:text-base">
+            Faça perguntas, compare respostas entre modelos e registre seu feedback.
+          </p>
+          {outputsCount > 0 && (
+            <span className="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+              {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
+            </span>
+          )}
         </div>
-        {outputsCount > 0 && (
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
-            {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
-          </span>
+
+        {suggestions.length > 0 && (
+          <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {suggestions.map((suggestion, index) => {
+              const accent = SUGGESTION_CARD_ACCENTS[index % SUGGESTION_CARD_ACCENTS.length];
+              return (
+                <button
+                  key={`${suggestion}-${index}`}
+                  type="button"
+                  onClick={() => handleSuggestionSelect(suggestion)}
+                  className={cn(
+                    "group relative flex h-full flex-col items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-sm text-foreground transition-all duration-300 ease-out",
+                    "hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_28px_80px_-60px_rgba(147,51,234,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-[0.99]",
+                    accent,
+                    "backdrop-blur-xl"
+                  )}
+                >
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.35em] text-primary/70">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Ideia
+                  </div>
+                  <p className="flex-1 text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-white group-focus:text-white">
+                    {suggestion}
+                  </p>
+                  <span className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                    Usar
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
-      </div>
-      {!hasAnyResponses && !isProcessing && (
-        <p className="mt-2 text-base text-muted-foreground/90 sm:text-lg">
-          Clique em alguma sugestão ou descreva seu próprio cenário no campo abaixo.
-        </p>
-      )}
-      <div className="relative mt-4 space-y-5">
-        <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background/70 to-background p-5 shadow-[0_30px_90px_-60px_rgba(147,51,234,0.65)] backdrop-blur">
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-primary/60">
-              Sugestões
-            </p>
-            <h4 className="text-lg font-semibold text-foreground sm:text-xl">Precisa de inspiração rápida?</h4>
-            <p className="text-base text-muted-foreground/90 sm:text-lg">
-              Escolha um dos prompts abaixo para preencher automaticamente o campo de entrada e iniciar um novo desafio.
-            </p>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-            {promptSuggestions.map((suggestion, index) => (
-              <button
-                key={`${suggestion}-${index}`}
-                type="button"
-                onClick={() => setPrompt(suggestion)}
-                className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-foreground transition-all hover:border-primary/60 hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-[0.99]"
+      </section>
+    );
+  };
+
+  const renderPromptComposer = () => (
+    <div className="sticky bottom-0 z-30 w-full border-t border-white/10 bg-white/5/30 backdrop-blur-lg">
+      <div className={cn(ARENA_CONTAINER, "flex justify-center py-4")}>
+        <div className="flex w-full max-w-5xl flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="flex flex-1 flex-col">
+            <div className="relative">
+              <Textarea
+                placeholder="Pergunte qualquer coisa..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={1}
+                className="min-h-[52px] w-full resize-none rounded-2xl border border-white/10 bg-black/40 py-3 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+                disabled={isRunning}
+                onInput={(e) => {
+                  const target = e.currentTarget;
+                  target.style.height = "auto";
+                  target.style.height = `${target.scrollHeight}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    runArena();
+                  }
+                }}
+              />
+              <Button
+                onClick={runArena}
+                disabled={isRunning || !prompt.trim()}
+                className="absolute right-4 top-1/2 h-11 w-11 -translate-y-1/2 rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-0 text-primary-foreground shadow-[0_25px_60px_-30px_rgba(147,51,234,0.8)] transition hover:from-primary/90 hover:to-accent"
               >
-                <span className="font-medium leading-snug transition-colors group-hover:text-white group-active:text-white group-focus:text-white">
-                  {suggestion}
-                </span>
-                <span className="rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
-                  Usar
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <Textarea
-          placeholder="Pergunte qualquer coisa..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          className="min-h-[110px] resize-none rounded-2xl border border-white/10 bg-black/30 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary sm:min-h-[130px] lg:min-h-[150px]"
-          disabled={isRunning}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              runArena();
-            }
-          }}
-        />
-
-        <Button
-          onClick={runArena}
-          disabled={isRunning || !prompt.trim()}
-          className="absolute bottom-5 right-5 h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 p-0 text-primary-foreground shadow-[0_25px_60px_-30px_rgba(147,51,234,0.8)] transition hover:from-primary/90 hover:to-accent"
-        >
-          {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-        </Button>
-      </div>
-    </section>
-  );
-
-  return (
-    <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
-      <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[128rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
-          <div className="flex-1 min-w-[260px] space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
-            <h1 className="text-lg font-semibold text-foreground sm:text-xl">
-              Encontre a melhor IA para você
-            </h1>
-            <p className="text-base text-muted-foreground/90 sm:text-lg">
-              Faça perguntas, compare respostas entre modelos e registre seu feedback.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-2 shadow-[0_18px_40px_-25px_rgba(147,51,234,0.8)]">
-            <Label htmlFor="mock-mode" className="text-sm font-medium text-sidebar-foreground">
-              {useMockData ? "Modo Mock" : "Endpoint Real"}
-            </Label>
-            <Switch id="mock-mode" checked={useMockData} onCheckedChange={setUseMockData} />
-          </div>
-        </div>
-      </div>
-      {hasPromptInteraction ? (
-        <div className="flex-1 min-h-0">
-          <div className="mx-auto flex h-full w-full max-w-[128rem] flex-col gap-6 px-4 py-5 pb-10 sm:px-8 lg:px-12">
-            <div className="flex flex-col gap-6">{renderResultsSections()}</div>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 min-h-0">
-          <div
-            className={cn(
-              "mx-auto flex h-full w-full max-w-[128rem] flex-col gap-6 px-4 py-5 sm:px-8 lg:px-12",
-              !hasAnyResponses && "justify-start"
-            )}
-          >
-            <div className="flex flex-col gap-6">{renderResultsSections()}</div>
-            <div
-              className={cn(
-                "flex justify-center transition-all duration-300",
-                "pt-8 sm:pt-12"
-              )}
-            >
-              {renderPromptSection()}
+                {isRunning ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              </Button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+
+  const renderMainContent = () =>
+    hasPromptInteraction ? (
+      <div className="flex min-h-full w-full items-center justify-center py-10">
+        <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
+          <div className="flex w-full max-w-5xl flex-col items-center gap-6 pb-36">
+            {renderResultsSections()}
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="flex min-h-full w-full items-center justify-center py-10">
+        <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
+          <div className="flex w-full max-w-5xl flex-col items-center gap-6 pb-36">
+            {renderPromptSection()}
+            {renderResultsSections()}
+          </div>
+        </div>
+      </div>
+    );
+
+  return (
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">{renderMainContent()}</div>
+      {renderPromptComposer()}
     </div>
   );
 });
