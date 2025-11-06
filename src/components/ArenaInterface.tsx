@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useMemo, useState, useCallback, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +58,131 @@ type ChoiceMessagePart =
   | null
   | undefined;
 
+const TASK_LABELS: Record<string, string> = {
+  aqua_rat: "AquaRAT",
+  esnli: "ESNLI",
+  gsm8k: "GSM8K",
+  math_qa: "MathQA",
+  strategy_qa: "StrategyQA",
+};
+
+const MODEL_ALIAS_STRINGS = [
+  "aqua_rat__Llama-3.2-3B-Instruct__grpo__merged_fp16-036",
+  "aqua_rat__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-032",
+  "aqua_rat__Llama-3.2-3B-Instruct__lora__merged_fp16-008",
+  "aqua_rat__Phi-4-mini-instruct__grpo__merged_fp16-057",
+  "aqua_rat__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-024",
+  "aqua_rat__Phi-4-mini-instruct__lora__merged_fp16-018",
+  "aqua_rat__Qwen3-4B-Instruct-2507__grpo__merged_fp16-035",
+  "aqua_rat__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-058",
+  "aqua_rat__Qwen3-4B-Instruct-2507__lora__merged_fp16-010",
+  "aqua_rat__gemma-3-4b-it__grpo__merged_fp16-044",
+  "aqua_rat__gemma-3-4b-it__grpo_on_lora__merged_fp16-023",
+  "aqua_rat__gemma-3-4b-it__lora__merged_fp16-047",
+  "esnli__Llama-3.2-3B-Instruct__grpo__merged_fp16-039",
+  "esnli__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-049",
+  "esnli__Llama-3.2-3B-Instruct__lora__merged_fp16-005",
+  "esnli__Phi-4-mini-instruct__grpo__merged_fp16-013",
+  "esnli__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-038",
+  "esnli__Phi-4-mini-instruct__lora__merged_fp16-034",
+  "esnli__Qwen3-4B-Instruct-2507__grpo__merged_fp16-056",
+  "esnli__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-054",
+  "esnli__Qwen3-4B-Instruct-2507__lora__merged_fp16-033",
+  "esnli__gemma-3-4b-it__grpo__merged_fp16-051",
+  "esnli__gemma-3-4b-it__grpo_on_lora__merged_fp16-031",
+  "esnli__gemma-3-4b-it__lora__merged_fp16-003",
+  "gsm8k__Llama-3.2-3B-Instruct__grpo__merged_fp16-040",
+  "gsm8k__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-041",
+  "gsm8k__Llama-3.2-3B-Instruct__lora__merged_fp16-021",
+  "gsm8k__Phi-4-mini-instruct__grpo__merged_fp16-016",
+  "gsm8k__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-030",
+  "gsm8k__Phi-4-mini-instruct__lora__merged_fp16-022",
+  "gsm8k__Qwen3-4B-Instruct-2507__grpo__merged_fp16-043",
+  "gsm8k__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-029",
+  "gsm8k__Qwen3-4B-Instruct-2507__lora__merged_fp16-007",
+  "gsm8k__gemma-3-4b-it__grpo__merged_fp16-002",
+  "gsm8k__gemma-3-4b-it__grpo_on_lora__merged_fp16-025",
+  "gsm8k__gemma-3-4b-it__lora__merged_fp16-027",
+  "math_qa__Llama-3.2-3B-Instruct__grpo__merged_fp16-055",
+  "math_qa__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-052",
+  "math_qa__Llama-3.2-3B-Instruct__lora__merged_fp16-009",
+  "math_qa__Phi-4-mini-instruct__lora__merged_fp16-014",
+  "math_qa__Qwen3-4B-Instruct-2507__grpo__merged_fp16-053",
+  "math_qa__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-042",
+  "math_qa__Qwen3-4B-Instruct-2507__lora__merged_fp16-015",
+  "math_qa__gemma-3-4b-it__grpo__merged_fp16-006",
+  "math_qa__gemma-3-4b-it__grpo_on_lora__merged_fp16-045",
+  "math_qa__gemma-3-4b-it__lora__merged_fp16-004",
+  "strategy_qa__Llama-3.2-3B-Instruct__grpo__merged_fp16-026",
+  "strategy_qa__Llama-3.2-3B-Instruct__lora__merged_fp16-046",
+  "strategy_qa__Phi-4-mini-instruct__grpo__merged_fp16-048",
+  "strategy_qa__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-020",
+  "strategy_qa__Phi-4-mini-instruct__lora__merged_fp16-001",
+  "strategy_qa__Qwen3-4B-Instruct-2507__grpo__merged_fp16-011",
+  "strategy_qa__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-037",
+  "strategy_qa__Qwen3-4B-Instruct-2507__lora__merged_fp16-028",
+  "strategy_qa__gemma-3-4b-it__grpo__merged_fp16-050",
+  "strategy_qa__gemma-3-4b-it__grpo_on_lora__merged_fp16-017",
+  "strategy_qa__gemma-3-4b-it__lora__merged_fp16-012",
+] as const;
+
+interface ModelAliasEntry {
+  id: string;
+  task: string;
+  displayName: string;
+}
+
+const formatDisplayName = (rawTask: string, base: string, variant: string, suffix: string | undefined) => {
+  const taskLabel = TASK_LABELS[rawTask] ?? rawTask.toUpperCase();
+  const baseLabel = base
+    .replace(/-/g, " ")
+    .replace(/\b(\w)/g, char => char.toUpperCase())
+    .replace(/\b3b\b/gi, "3B");
+  const variantLabel = variant.replace(/_/g, " ").toUpperCase();
+  const suffixLabel = suffix?.replace("merged_fp16-", "#").replace("merged_fp8-", "#") ?? "";
+  return `${taskLabel} · ${baseLabel} (${variantLabel}${suffixLabel ? ` ${suffixLabel}` : ""})`;
+};
+
+const MODEL_ALIAS_ENTRIES: ModelAliasEntry[] = MODEL_ALIAS_STRINGS.map(raw => {
+  const [task = "general", base = "Model", variant = "variant", suffix] = raw.split("__");
+  return {
+    id: raw,
+    task,
+    displayName: formatDisplayName(task, base, variant, suffix),
+  };
+});
+
+const TOTAL_ALIAS_COUNT = MODEL_ALIAS_ENTRIES.length;
+
+const getNextAliasPair = (cursor: number): { pair: [ModelAliasEntry, ModelAliasEntry]; nextCursor: number } => {
+  if (TOTAL_ALIAS_COUNT < 2) {
+    throw new Error("Alias catalog insuficiente para compor pares.");
+  }
+
+  const normalizeIndex = (index: number) => {
+    const mod = index % TOTAL_ALIAS_COUNT;
+    return mod < 0 ? mod + TOTAL_ALIAS_COUNT : mod;
+  };
+
+  const firstIndex = normalizeIndex(cursor);
+  const firstAlias = MODEL_ALIAS_ENTRIES[firstIndex];
+  let secondIndex = normalizeIndex(firstIndex + 1);
+
+  while (MODEL_ALIAS_ENTRIES[secondIndex].task !== firstAlias.task) {
+    secondIndex = normalizeIndex(secondIndex + 1);
+    if (secondIndex === firstIndex) {
+      // fallback: break to avoid infinite loop
+      secondIndex = normalizeIndex(firstIndex + 1);
+      break;
+    }
+  }
+
+  const secondAlias = MODEL_ALIAS_ENTRIES[secondIndex];
+  const nextCursor = normalizeIndex(secondIndex + 1);
+  return { pair: [firstAlias, secondAlias], nextCursor };
+};
+
+const ARENA_CONTAINER = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10";
 const normalizeApiResults = (
   payload: VirtualApiResponse | VirtualModelApiResult[] | null | undefined
 ): VirtualModelApiResult[] => {
@@ -97,8 +222,6 @@ const SUGGESTION_CARD_ACCENTS = [
 const EXTRA_PROMPT_SUGGESTION =
   "Qual estratégia de IA você recomenda para diminuir churn em uma plataforma de assinatura?";
 
-const ARENA_CONTAINER = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10";
-
 export interface ArenaInterfaceHandle {
   startNewChat: () => void;
   loadChat: (chat: ChatHistoryEntry) => void;
@@ -131,6 +254,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [conversation, setConversation] = useState<ChatTurn[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [useMockData] = useState(false);
+  const aliasCursorRef = useRef(0);
   const activeChat = useMemo(
     () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
     [chatHistory, currentChatId]
@@ -276,6 +400,20 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     setPrompt(suggestion);
   };
 
+  const applyAliasMask = (rawResults: VirtualModelApiResult[]): VirtualApiResponse => {
+    const { pair, nextCursor } = getNextAliasPair(aliasCursorRef.current);
+    aliasCursorRef.current = nextCursor;
+    const maskedResults = rawResults.map((result, index) => {
+      const alias = pair[index % pair.length];
+      return {
+        ...result,
+        model: alias.id,
+        model_name: alias.displayName,
+      };
+    });
+    return { results: maskedResults };
+  };
+
   const generateMockResponse = async (prompt: string): Promise<VirtualApiResponse> => {
     // Simular delay da API
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
@@ -296,7 +434,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       inference_seconds: 0.5 + Math.random() * 2
     }));
 
-    return { results };
+    return applyAliasMask(results);
   };
 
   const sendPromptToEndpoint = async (prompt: string): Promise<VirtualApiResponse> => {
@@ -387,7 +525,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         });
       }
 
-      return { results };
+      return applyAliasMask(results);
     } catch (error) {
       console.error("Error sending prompt to OpenAI:", error);
       throw error;
