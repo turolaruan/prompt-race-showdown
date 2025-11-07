@@ -12,29 +12,29 @@ import { cn } from "@/lib/utils";
 
 const PROMPT_SUGGESTIONS_BY_TASK: Record<string, string[]> = {
   strategy_qa: [
-    "Você é um conselheiro presidencial. Como equilibrar segurança nacional e liberdades civis diante de uma nova ameaça?",
-    "Um time de vendas precisa priorizar clientes. Monte uma estratégia para maximizar receita e relacionamento a longo prazo.",
-    "Uma ONG possui orçamento limitado para campanhas climáticas. Decida onde investir primeiro e justifique a escolha.",
+    "Aconselhe o presidente sobre como equilibrar segurança nacional e liberdades civis diante de uma nova ameaça, diagnosticando os principais riscos, apresentando uma matriz com três frentes prioritárias (medida, impacto esperado e riscos) e fechando com um plano de comunicação pública em dois passos.",
+    "Mostre como priorizar a carteira de um time de vendas B2B: explique os critérios de segmentação, apresente-os em uma tabela para quatro perfis hipotéticos (receita potencial, ciclo, esforço) e finalize com recomendações operacionais para os próximos 30 dias.",
+    "Distribua um orçamento anual de R$ 1 milhão para uma ONG climática listando três iniciativas com localização, público e custo, calculando a porcentagem destinada a cada uma, definindo métricas de sucesso e detalhando como medir o impacto em seis meses.",
   ],
   math_qa: [
-    "Explique como resolver um sistema de equações lineares com duas incógnitas narrando o raciocínio.",
-    "Interprete uma questão de matemática financeira descrevendo cada etapa antes de calcular o resultado final.",
-    "Um problema pede o perímetro de um triângulo isósceles descrito em texto. Mostre como extrair os dados e resolver.",
+    "Resolva o sistema 3x + 2y = 12 e x - y = 1 descrevendo o método escolhido, numerando os passos de substituição ou escalonamento e destacando os valores finais de x e y.",
+    "Calcule o valor futuro de um investimento de R$ 8.000 a 1,2% ao mês durante 18 meses em juros compostos, explicando a fórmula, montando a expressão com números, chegando ao resultado e interpretando o significado financeiro.",
+    "Encontre o perímetro de um triângulo isósceles em que a base mede 14 cm e cada lado igual é 5 cm maior, extraindo os dados do enunciado, montando a equação do perímetro e apresentando a resposta com unidades.",
   ],
   aqua_rat: [
-    "Resolva: Se 3x + 5 = 20, qual o valor de x? Mostre o raciocínio algébrico passo a passo.",
-    "Em uma loja, um produto sofre dois descontos sucessivos de 10% e 5%. Qual o desconto total aplicado?",
-    "Determine o valor de x em 2(x - 4) = 3x + 1 e explique cada transformação algébrica usada.",
+    "Resolva 3x + 5 = 20 descrevendo o isolamento da incógnita, detalhando cada transformação algébrica com a justificativa e verificando o resultado ao substituir o valor de x.",
+    "Calcule o desconto total de um produto que recebe reduções sucessivas de 10% e 5% sobre o preço original, mostrando a fórmula utilizada, o percentual final e por que a soma simples não chega ao mesmo valor.",
+    "Determine x em 2(x - 4) = 3x + 1 distribuindo os termos, agrupando corretamente, isolando a incógnita, fornecendo o valor final e checando rapidamente com a substituição.",
   ],
   gsm8k: [
-    "Um estudante percorre 120 km em 2 horas. Qual sua velocidade média? Resolva com linguagem acessível ao ensino médio.",
-    "Uma prova possui 20 questões valendo 5 pontos cada. Quantos pontos são necessários para atingir 75% de aproveitamento?",
-    "Calcule a área de um retângulo com lados descritos em frase: um tem 8 m e o outro é 3 m maior.",
+    "Calcule a velocidade média de um estudante que percorre 120 km em 2 horas, apresentando a fórmula, substituindo os valores, exibindo a unidade final e mantendo a explicação acessível ao ensino médio.",
+    "Descubra quantos pontos são necessários para atingir 75% de aproveitamento em uma prova com 20 questões valendo 5 pontos cada, calculando o total possível, aplicando o percentual e interpretando o resultado.",
+    "Ache a área de um retângulo cujos lados descritos em texto são 8 m e 3 m a mais que isso, traduzindo o enunciado para números, aplicando a fórmula da área, indicando as unidades e comentando o significado prático.",
   ],
   esnli: [
-    "Leia o parágrafo fornecido e produza um resumo com foco na conclusão apresentada.",
-    "Analise duas frases e determine se uma implica, contradiz ou é neutra em relação à outra, justificando.",
-    "Transforme um texto jornalístico de 200 palavras em um resumo de até 3 frases que mantenha o sentido principal.",
+    "Resuma em duas frases o parágrafo: \"Desde 2019, o programa Energia Viva levou sistemas solares a 48 comunidades ribeirinhas no Amazonas, ajudou 6.200 famílias a cortar 70% do diesel, refrigerar vacinas e vender polpas; o novo desafio é manter a assistência técnica apesar das enchentes.\" Destaque conclusão e desafio futuro.",
+    "Sentenças: A) \"Todos os sensores instalados no porto captam umidade acima de 80%.\" B) \"Alguns sensores no porto registram ar seco.\" Classifique B como implicação, contradição ou neutra em relação a A, cite o motivo e proponha contraexemplo se neutra.",
+    "Resuma em até três frases este texto: \"O Ministério da Saúde lançou hoje, em Recife, o programa Sentinela Azul para equipar 120 UBS com testes rápidos de dengue, treinar 400 agentes e reduzir surtos em 35% até março/2025 usando dados do Inmet.\" Preserve quem anunciou, onde, números-chave e meta percentual.",
   ],
 };
 
@@ -152,6 +152,15 @@ const MODEL_ALIAS_ENTRIES: ModelAliasEntry[] = MODEL_ALIAS_STRINGS.map(raw => {
   };
 });
 
+const shuffleAliases = (entries: ModelAliasEntry[]): ModelAliasEntry[] => {
+  const copy = [...entries];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
 type ModelAliasPair = [ModelAliasEntry, ModelAliasEntry];
 
 const shouldIncludeChainOfThought = (aliasId: string): boolean => aliasId.includes("__grpo");
@@ -169,23 +178,25 @@ const buildMockResponseText = (prompt: string, alias: ModelAliasEntry): string =
   return `${baseAnswer}\n\nRaciocínio (demo):\n1. Identificar os dados e restrições principais do cenário.\n2. Aplicar o método específico do domínio ${alias.task.toUpperCase()} para estruturar a solução.\n3. Validar o resultado e comunicar de forma clara.\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
 };
 
-const TOTAL_ALIAS_COUNT = MODEL_ALIAS_ENTRIES.length;
-
-const getNextAliasPair = (cursor: number): { pair: ModelAliasPair; nextCursor: number } => {
-  if (TOTAL_ALIAS_COUNT < 2) {
+const getNextAliasPair = (
+  entries: ModelAliasEntry[],
+  cursor: number
+): { pair: ModelAliasPair; nextCursor: number } => {
+  const totalAliasCount = entries.length;
+  if (totalAliasCount < 2) {
     throw new Error("Alias catalog insuficiente para compor pares.");
   }
 
   const normalizeIndex = (index: number) => {
-    const mod = index % TOTAL_ALIAS_COUNT;
-    return mod < 0 ? mod + TOTAL_ALIAS_COUNT : mod;
+    const mod = index % totalAliasCount;
+    return mod < 0 ? mod + totalAliasCount : mod;
   };
 
   const firstIndex = normalizeIndex(cursor);
-  const firstAlias = MODEL_ALIAS_ENTRIES[firstIndex];
+  const firstAlias = entries[firstIndex];
   let secondIndex = normalizeIndex(firstIndex + 1);
 
-  while (MODEL_ALIAS_ENTRIES[secondIndex].task !== firstAlias.task) {
+  while (entries[secondIndex].task !== firstAlias.task) {
     secondIndex = normalizeIndex(secondIndex + 1);
     if (secondIndex === firstIndex) {
       // fallback: break to avoid infinite loop
@@ -194,7 +205,7 @@ const getNextAliasPair = (cursor: number): { pair: ModelAliasPair; nextCursor: n
     }
   }
 
-  const secondAlias = MODEL_ALIAS_ENTRIES[secondIndex];
+  const secondAlias = entries[secondIndex];
   const nextCursor = normalizeIndex(secondIndex + 1);
   return { pair: [firstAlias, secondAlias], nextCursor };
 };
@@ -271,7 +282,20 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [conversation, setConversation] = useState<ChatTurn[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [useMockData] = useState(false);
-  const aliasCursorRef = useRef(0);
+  const aliasEntriesRef = useRef<ModelAliasEntry[]>([]);
+  if (aliasEntriesRef.current.length === 0) {
+    aliasEntriesRef.current = shuffleAliases(MODEL_ALIAS_ENTRIES);
+  }
+  const aliasEntries = aliasEntriesRef.current;
+  const aliasCursorRef = useRef(Math.floor(Math.random() * aliasEntries.length));
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const adjustTextareaHeight = useCallback((element?: HTMLTextAreaElement | null) => {
+    const textarea = element ?? textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, []);
   const activeChat = useMemo(
     () => chatHistory.find(chat => chat.id === currentChatId) ?? null,
     [chatHistory, currentChatId]
@@ -566,7 +590,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         typeof performance !== "undefined" && typeof performance.now === "function"
           ? performance.now()
           : Date.now();
-      const aliasInfo = getNextAliasPair(aliasCursorRef.current);
+      const aliasInfo = getNextAliasPair(aliasEntries, aliasCursorRef.current);
       aliasCursorRef.current = aliasInfo.nextCursor;
       const requestStart = now();
       const apiResponse = useMockData
@@ -1005,6 +1029,10 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     );
   };
 
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [prompt, adjustTextareaHeight]);
+
   const renderPromptComposer = () => (
     <div className="sticky bottom-0 z-30 w-full border-t border-white/10 bg-white/5/30 backdrop-blur-lg">
       <div className={cn(ARENA_CONTAINER, "flex justify-center py-4")}>
@@ -1012,6 +1040,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
           <div className="flex flex-1 flex-col">
             <div className="relative">
               <Textarea
+                ref={textareaRef}
                 placeholder="Pergunte qualquer coisa..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -1019,14 +1048,14 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 className="min-h-[52px] w-full resize-none rounded-2xl border border-white/10 bg-black/40 py-3 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isRunning}
                 onInput={(e) => {
-                  const target = e.currentTarget;
-                  target.style.height = "auto";
-                  target.style.height = `${target.scrollHeight}px`;
+                  adjustTextareaHeight(e.currentTarget);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
-                    runArena();
+                    if (!isRunning && prompt.trim()) {
+                      runArena();
+                    }
                   }
                 }}
               />
