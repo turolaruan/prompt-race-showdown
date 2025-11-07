@@ -152,9 +152,26 @@ const MODEL_ALIAS_ENTRIES: ModelAliasEntry[] = MODEL_ALIAS_STRINGS.map(raw => {
   };
 });
 
+type ModelAliasPair = [ModelAliasEntry, ModelAliasEntry];
+
+const shouldIncludeChainOfThought = (aliasId: string): boolean => aliasId.includes("__grpo");
+
+const buildReasoningInstruction = (alias: ModelAliasEntry): string =>
+  shouldIncludeChainOfThought(alias.id)
+    ? "Inclua uma seção curta chamada 'Raciocínio (demo)' com 2 a 3 passos numerados antes da resposta final."
+    : "Responda de forma direta, sem seções adicionais de raciocínio.";
+
+const buildMockResponseText = (prompt: string, alias: ModelAliasEntry): string => {
+  const baseAnswer = `Analisando o pedido "${prompt}", aqui está uma resposta resumida com foco no domínio ${alias.task.toUpperCase()}.`;
+  if (!shouldIncludeChainOfThought(alias.id)) {
+    return `${baseAnswer}\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
+  }
+  return `${baseAnswer}\n\nRaciocínio (demo):\n1. Identificar os dados e restrições principais do cenário.\n2. Aplicar o método específico do domínio ${alias.task.toUpperCase()} para estruturar a solução.\n3. Validar o resultado e comunicar de forma clara.\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
+};
+
 const TOTAL_ALIAS_COUNT = MODEL_ALIAS_ENTRIES.length;
 
-const getNextAliasPair = (cursor: number): { pair: [ModelAliasEntry, ModelAliasEntry]; nextCursor: number } => {
+const getNextAliasPair = (cursor: number): { pair: ModelAliasPair; nextCursor: number } => {
   if (TOTAL_ALIAS_COUNT < 2) {
     throw new Error("Alias catalog insuficiente para compor pares.");
   }
@@ -400,44 +417,27 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     setPrompt(suggestion);
   };
 
-  const applyAliasMask = (rawResults: VirtualModelApiResult[]): VirtualApiResponse => {
-    const { pair, nextCursor } = getNextAliasPair(aliasCursorRef.current);
-    aliasCursorRef.current = nextCursor;
-    const maskedResults = rawResults.map((result, index) => {
-      const alias = pair[index % pair.length];
-      return {
-        ...result,
-        model: alias.id,
-        model_name: alias.displayName,
-      };
-    });
-    return { results: maskedResults };
-  };
-
-  const generateMockResponse = async (prompt: string): Promise<VirtualApiResponse> => {
+  const generateMockResponse = async (
+    prompt: string,
+    aliasPair: ModelAliasPair
+  ): Promise<VirtualApiResponse> => {
     // Simular delay da API
     await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
     
-    const mockModels = [
-      { id: "google/gemini-2.5-pro", name: "Gemini Pro" },
-      { id: "openai/gpt-5", name: "GPT-5" }
-    ];
-
-    const mockResponses = [
-      `Esta é uma resposta simulada para "${prompt}". O modelo está processando sua solicitação com base em vastos conjuntos de dados de treinamento. A inteligência artificial moderna utiliza redes neurais profundas para compreender e gerar texto de forma contextualizada, analisando padrões complexos nos dados de treinamento.`,
-      `Resposta mock gerada: ${prompt}. Esta resposta demonstra capacidades avançadas de compreensão de linguagem natural e geração de texto contextualizado. Os modelos de linguagem são treinados em bilhões de parâmetros para fornecer respostas precisas e relevantes ao contexto fornecido pelo usuário.`
-    ];
-
-    const results: VirtualModelApiResult[] = mockModels.map((model, index) => ({
-      model: model.id,
-      response: mockResponses[index],
+    const results: VirtualModelApiResult[] = aliasPair.map(alias => ({
+      model: alias.id,
+      model_name: alias.displayName,
+      response: buildMockResponseText(prompt, alias),
       inference_seconds: 0.5 + Math.random() * 2
     }));
 
-    return applyAliasMask(results);
+    return { results };
   };
 
-  const sendPromptToEndpoint = async (prompt: string): Promise<VirtualApiResponse> => {
+  const sendPromptToEndpoint = async (
+    prompt: string,
+    aliasPair: ModelAliasPair
+  ): Promise<VirtualApiResponse> => {
     const apiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim();
     if (!apiKey) {
       throw new Error(
@@ -465,7 +465,10 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     const results: VirtualModelApiResult[] = [];
 
     try {
-      for (const variant of OPENAI_VIRTUAL_MODELS) {
+      for (let index = 0; index < OPENAI_VIRTUAL_MODELS.length; index += 1) {
+        const variant = OPENAI_VIRTUAL_MODELS[index];
+        const alias = aliasPair[index % aliasPair.length];
+        const reasoningInstruction = buildReasoningInstruction(alias);
         const requestStart = now();
         const response = await fetch(endpoint, {
           method: "POST",
@@ -476,7 +479,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             messages: [
               {
                 role: "system",
-                content: variant.systemInstruction,
+                content: `${variant.systemInstruction} ${reasoningInstruction}`,
               },
               {
                 role: "user",
@@ -518,14 +521,14 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         }
 
         results.push({
-          model: variant.id,
-          model_name: variant.name,
+          model: alias.id,
+          model_name: alias.displayName,
           response: choiceContent || "Resposta não disponível",
           inference_seconds: Math.max(elapsed / 1000, 0),
         });
       }
 
-      return applyAliasMask(results);
+      return { results };
     } catch (error) {
       console.error("Error sending prompt to OpenAI:", error);
       throw error;
@@ -563,10 +566,12 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         typeof performance !== "undefined" && typeof performance.now === "function"
           ? performance.now()
           : Date.now();
+      const aliasInfo = getNextAliasPair(aliasCursorRef.current);
+      aliasCursorRef.current = aliasInfo.nextCursor;
       const requestStart = now();
       const apiResponse = useMockData
-        ? await generateMockResponse(currentPrompt)
-        : await sendPromptToEndpoint(currentPrompt);
+        ? await generateMockResponse(currentPrompt, aliasInfo.pair)
+        : await sendPromptToEndpoint(currentPrompt, aliasInfo.pair);
       console.log("API TCC response:", apiResponse);
       const totalDuration = Math.round(now() - requestStart);
       const results = normalizeApiResults(apiResponse);
