@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, forwardRef, useImperativeHandle, useRef } from "react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,63 +68,63 @@ const TASK_LABELS: Record<string, string> = {
 };
 
 const MODEL_ALIAS_STRINGS = [
-  "aqua_rat__Llama-3.2-3B-Instruct__grpo__merged_fp16-036",
-  "aqua_rat__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-032",
-  "aqua_rat__Llama-3.2-3B-Instruct__lora__merged_fp16-008",
-  "aqua_rat__Phi-4-mini-instruct__grpo__merged_fp16-057",
-  "aqua_rat__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-024",
-  "aqua_rat__Phi-4-mini-instruct__lora__merged_fp16-018",
-  "aqua_rat__Qwen3-4B-Instruct-2507__grpo__merged_fp16-035",
-  "aqua_rat__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-058",
-  "aqua_rat__Qwen3-4B-Instruct-2507__lora__merged_fp16-010",
-  "aqua_rat__gemma-3-4b-it__grpo__merged_fp16-044",
-  "aqua_rat__gemma-3-4b-it__grpo_on_lora__merged_fp16-023",
-  "aqua_rat__gemma-3-4b-it__lora__merged_fp16-047",
-  "esnli__Llama-3.2-3B-Instruct__grpo__merged_fp16-039",
-  "esnli__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-049",
-  "esnli__Llama-3.2-3B-Instruct__lora__merged_fp16-005",
-  "esnli__Phi-4-mini-instruct__grpo__merged_fp16-013",
-  "esnli__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-038",
-  "esnli__Phi-4-mini-instruct__lora__merged_fp16-034",
-  "esnli__Qwen3-4B-Instruct-2507__grpo__merged_fp16-056",
-  "esnli__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-054",
-  "esnli__Qwen3-4B-Instruct-2507__lora__merged_fp16-033",
-  "esnli__gemma-3-4b-it__grpo__merged_fp16-051",
-  "esnli__gemma-3-4b-it__grpo_on_lora__merged_fp16-031",
-  "esnli__gemma-3-4b-it__lora__merged_fp16-003",
-  "gsm8k__Llama-3.2-3B-Instruct__grpo__merged_fp16-040",
-  "gsm8k__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-041",
-  "gsm8k__Llama-3.2-3B-Instruct__lora__merged_fp16-021",
-  "gsm8k__Phi-4-mini-instruct__grpo__merged_fp16-016",
-  "gsm8k__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-030",
-  "gsm8k__Phi-4-mini-instruct__lora__merged_fp16-022",
-  "gsm8k__Qwen3-4B-Instruct-2507__grpo__merged_fp16-043",
-  "gsm8k__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-029",
-  "gsm8k__Qwen3-4B-Instruct-2507__lora__merged_fp16-007",
-  "gsm8k__gemma-3-4b-it__grpo__merged_fp16-002",
-  "gsm8k__gemma-3-4b-it__grpo_on_lora__merged_fp16-025",
-  "gsm8k__gemma-3-4b-it__lora__merged_fp16-027",
-  "math_qa__Llama-3.2-3B-Instruct__grpo__merged_fp16-055",
-  "math_qa__Llama-3.2-3B-Instruct__grpo_on_lora__merged_fp16-052",
-  "math_qa__Llama-3.2-3B-Instruct__lora__merged_fp16-009",
-  "math_qa__Phi-4-mini-instruct__lora__merged_fp16-014",
-  "math_qa__Qwen3-4B-Instruct-2507__grpo__merged_fp16-053",
-  "math_qa__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-042",
-  "math_qa__Qwen3-4B-Instruct-2507__lora__merged_fp16-015",
-  "math_qa__gemma-3-4b-it__grpo__merged_fp16-006",
-  "math_qa__gemma-3-4b-it__grpo_on_lora__merged_fp16-045",
-  "math_qa__gemma-3-4b-it__lora__merged_fp16-004",
-  "strategy_qa__Llama-3.2-3B-Instruct__grpo__merged_fp16-026",
-  "strategy_qa__Llama-3.2-3B-Instruct__lora__merged_fp16-046",
-  "strategy_qa__Phi-4-mini-instruct__grpo__merged_fp16-048",
-  "strategy_qa__Phi-4-mini-instruct__grpo_on_lora__merged_fp16-020",
-  "strategy_qa__Phi-4-mini-instruct__lora__merged_fp16-001",
-  "strategy_qa__Qwen3-4B-Instruct-2507__grpo__merged_fp16-011",
-  "strategy_qa__Qwen3-4B-Instruct-2507__grpo_on_lora__merged_fp16-037",
-  "strategy_qa__Qwen3-4B-Instruct-2507__lora__merged_fp16-028",
-  "strategy_qa__gemma-3-4b-it__grpo__merged_fp16-050",
-  "strategy_qa__gemma-3-4b-it__grpo_on_lora__merged_fp16-017",
-  "strategy_qa__gemma-3-4b-it__lora__merged_fp16-012",
+  "aqua_rat__Llama-3.2-3B-Instruct__grpo",
+  "aqua_rat__Llama-3.2-3B-Instruct__grpo_on_lora",
+  "aqua_rat__Llama-3.2-3B-Instruct__lora",
+  "aqua_rat__Phi-4-mini-instruct__grpo",
+  "aqua_rat__Phi-4-mini-instruct__grpo_on_lora",
+  "aqua_rat__Phi-4-mini-instruct__lora",
+  "aqua_rat__Qwen3-4B-Instruct-2507__grpo",
+  "aqua_rat__Qwen3-4B-Instruct-2507__grpo_on_lora",
+  "aqua_rat__Qwen3-4B-Instruct-2507__lora",
+  "aqua_rat__gemma-3-4b-it__grpo",
+  "aqua_rat__gemma-3-4b-it__grpo_on_lora",
+  "aqua_rat__gemma-3-4b-it__lora",
+  "esnli__Llama-3.2-3B-Instruct__grpo",
+  "esnli__Llama-3.2-3B-Instruct__grpo_on_lora",
+  "esnli__Llama-3.2-3B-Instruct__lora",
+  "esnli__Phi-4-mini-instruct__grpo",
+  "esnli__Phi-4-mini-instruct__grpo_on_lora",
+  "esnli__Phi-4-mini-instruct__lora",
+  "esnli__Qwen3-4B-Instruct-2507__grpo",
+  "esnli__Qwen3-4B-Instruct-2507__grpo_on_lora",
+  "esnli__Qwen3-4B-Instruct-2507__lora",
+  "esnli__gemma-3-4b-it__grpo",
+  "esnli__gemma-3-4b-it__grpo_on_lora",
+  "esnli__gemma-3-4b-it__lora",
+  "gsm8k__Llama-3.2-3B-Instruct__grpo",
+  "gsm8k__Llama-3.2-3B-Instruct__grpo_on_lora",
+  "gsm8k__Llama-3.2-3B-Instruct__lora",
+  "gsm8k__Phi-4-mini-instruct__grpo",
+  "gsm8k__Phi-4-mini-instruct__grpo_on_lora",
+  "gsm8k__Phi-4-mini-instruct__lora",
+  "gsm8k__Qwen3-4B-Instruct-2507__grpo",
+  "gsm8k__Qwen3-4B-Instruct-2507__grpo_on_lora",
+  "gsm8k__Qwen3-4B-Instruct-2507__lora",
+  "gsm8k__gemma-3-4b-it__grpo",
+  "gsm8k__gemma-3-4b-it__grpo_on_lora",
+  "gsm8k__gemma-3-4b-it__lora",
+  "math_qa__Llama-3.2-3B-Instruct__grpo",
+  "math_qa__Llama-3.2-3B-Instruct__grpo_on_lora",
+  "math_qa__Llama-3.2-3B-Instruct__lora",
+  "math_qa__Phi-4-mini-instruct__lora",
+  "math_qa__Qwen3-4B-Instruct-2507__grpo",
+  "math_qa__Qwen3-4B-Instruct-2507__grpo_on_lora",
+  "math_qa__Qwen3-4B-Instruct-2507__lora",
+  "math_qa__gemma-3-4b-it__grpo",
+  "math_qa__gemma-3-4b-it__grpo_on_lora",
+  "math_qa__gemma-3-4b-it__lora",
+  "strategy_qa__Llama-3.2-3B-Instruct__grpo",
+  "strategy_qa__Llama-3.2-3B-Instruct__lora",
+  "strategy_qa__Phi-4-mini-instruct__grpo",
+  "strategy_qa__Phi-4-mini-instruct__grpo_on_lora",
+  "strategy_qa__Phi-4-mini-instruct__lora",
+  "strategy_qa__Qwen3-4B-Instruct-2507__grpo",
+  "strategy_qa__Qwen3-4B-Instruct-2507__grpo_on_lora",
+  "strategy_qa__Qwen3-4B-Instruct-2507__lora",
+  "strategy_qa__gemma-3-4b-it__grpo",
+  "strategy_qa__gemma-3-4b-it__grpo_on_lora",
+  "strategy_qa__gemma-3-4b-it__lora",
 ] as const;
 
 interface ModelAliasEntry {
@@ -163,11 +164,45 @@ const shuffleAliases = (entries: ModelAliasEntry[]): ModelAliasEntry[] => {
 
 type ModelAliasPair = [ModelAliasEntry, ModelAliasEntry];
 
+const renderAnswerWithThinkStyling = (text: string): ReactNode => {
+  if (!text) return "";
+  if (!text.includes("<think>")) {
+    return text;
+  }
+
+  const segments: { type: "think" | "text"; content: string }[] = [];
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null = null;
+
+  while ((match = thinkRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: text.slice(lastIndex, match.index) });
+    }
+    segments.push({ type: "think", content: match[1] ?? "" });
+    lastIndex = thinkRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", content: text.slice(lastIndex) });
+  }
+
+  return segments.map((segment, index) =>
+    segment.type === "think" ? (
+      <span key={`think-${index}`} className="block text-[0.95rem] text-muted-foreground/75">
+        {segment.content.trim()}
+      </span>
+    ) : (
+      <span key={`text-${index}`}>{segment.content}</span>
+    )
+  );
+};
+
 const shouldIncludeChainOfThought = (aliasId: string): boolean => aliasId.includes("__grpo");
 
 const buildReasoningInstruction = (alias: ModelAliasEntry): string =>
   shouldIncludeChainOfThought(alias.id)
-    ? "Inclua uma seção curta chamada 'Raciocínio (demo)' com 2 a 3 passos numerados antes da resposta final."
+    ? "Inclua uma seção curta limitada por tags <think></think> com 2 a 3 passos de pensamento em primeira pessoa, antes de fornecer a resposta final. O pensamento deve incluir conclusões e tomadas de decisão, simulando o processo de raciocínio do modelo para resolver o problema em questão."
     : "Responda de forma direta, sem seções adicionais de raciocínio.";
 
 const buildMockResponseText = (prompt: string, alias: ModelAliasEntry): string => {
@@ -175,7 +210,7 @@ const buildMockResponseText = (prompt: string, alias: ModelAliasEntry): string =
   if (!shouldIncludeChainOfThought(alias.id)) {
     return `${baseAnswer}\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
   }
-  return `${baseAnswer}\n\nRaciocínio (demo):\n1. Identificar os dados e restrições principais do cenário.\n2. Aplicar o método específico do domínio ${alias.task.toUpperCase()} para estruturar a solução.\n3. Validar o resultado e comunicar de forma clara.\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
+  return `${baseAnswer}\n\nRaciocínio:\n1. Identificar os dados e restrições principais do cenário.\n2. Aplicar o método específico do domínio ${alias.task.toUpperCase()} para estruturar a solução.\n3. Validar o resultado e comunicar de forma clara.\n\nResposta: A IA sugere abordar o problema enfatizando os pontos principais e oferecendo recomendações práticas.`;
 };
 
 const getNextAliasPair = (
@@ -228,14 +263,14 @@ const OPENAI_VIRTUAL_MODELS = [
     id: "openai/gpt-4.1-mini-analitico",
     name: "GPT-4.1 Mini Analítico",
     systemInstruction:
-      "Você é um especialista analítico. Estruture respostas em tópicos claros, justificando cada ponto com lógica e dados quando possível.",
+      "Você é um especialista analítico. Estruture respostas em tópicos claros, justificando cada ponto com lógica e dados quando possível. O seu output deve ser conciso e direto, com NO MÁXIMO 40 palavras.",
     temperature: 0.6,
   },
   {
     id: "openai/gpt-4.1-mini-criativo",
     name: "GPT-4.1 Mini Criativo",
     systemInstruction:
-      "Você é um comunicador criativo. Traga analogias, exemplos e um tom envolvente, mantendo a precisão das informações.",
+      "Você é um comunicador criativo. Traga analogias, exemplos e um tom envolvente, mantendo a precisão das informações. O seu output deve ser conciso e direto, com NO MÁXIMO 40 palavras.",
     temperature: 0.8,
   },
 ] as const;
@@ -931,7 +966,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                       <CardContent className="flex flex-1 flex-col p-0">
                         <div className="flex-1 space-y-5 border-b border-white/10 px-5 py-5">
                           <p className="whitespace-pre-line text-lg leading-relaxed text-foreground sm:text-xl">
-                            {answerText}
+                            {renderAnswerWithThinkStyling(answerText)}
                           </p>
                         </div>
                         <div className="flex flex-col gap-4 px-5 py-4">
@@ -1096,7 +1131,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
       <div className="flex-1 overflow-y-auto overflow-x-hidden">{renderMainContent()}</div>
-      {renderPromptComposer()}
+      {!hasPromptInteraction && renderPromptComposer()}
     </div>
   );
 });
