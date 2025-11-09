@@ -245,7 +245,7 @@ const getNextAliasPair = (
   return { pair: [firstAlias, secondAlias], nextCursor };
 };
 
-const ARENA_CONTAINER = "mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-10";
+const ARENA_CONTAINER = "mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-16";
 const normalizeApiResults = (
   payload: VirtualApiResponse | VirtualModelApiResult[] | null | undefined
 ): VirtualModelApiResult[] => {
@@ -856,7 +856,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
           <section
             key={turn.id}
             className={cn(
-              "relative overflow-hidden rounded-3xl border bg-gradient-to-br shadow-[0_40px_120px_-80px_rgba(147,51,234,0.55)]",
+              "relative w-full overflow-hidden rounded-3xl border bg-gradient-to-br shadow-[0_40px_120px_-80px_rgba(147,51,234,0.55)]",
               isLatest
                 ? "border-primary/30 from-primary/10 via-background/85 to-background"
                 : "border-white/10 from-background/80 via-background/95 to-background"
@@ -898,7 +898,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:gap-10 2xl:gap-12">
+              <div className="grid w-full grid-cols-1 gap-6 md:grid-cols-2 xl:gap-10 2xl:gap-12">
                 {turnOutputs.map((item, turnIndex) => {
                   const outputId = item.id;
                   const modelLabel = item.modelName || getModelDisplayName(item.modelId);
@@ -1071,7 +1071,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const renderPromptComposer = () => (
     <div className="sticky bottom-0 z-30 w-full border-t border-white/10 bg-white/5/30 backdrop-blur-lg">
       <div className={cn(ARENA_CONTAINER, "flex justify-center py-4")}>
-        <div className="flex w-full max-w-5xl flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
           <div className="flex flex-1 flex-col">
             <div className="relative">
               <Textarea
@@ -1112,7 +1112,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     hasPromptInteraction ? (
       <div className="flex min-h-full w-full items-center justify-center py-10">
         <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
-          <div className="flex w-full max-w-5xl flex-col items-center gap-6 pb-36">
+          <div className="flex w-full flex-col gap-6 pb-36">
             {renderResultsSections()}
           </div>
         </div>
@@ -1120,7 +1120,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     ) : (
       <div className="flex min-h-full w-full items-center justify-center py-10">
         <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
-          <div className="flex w-full max-w-5xl flex-col items-center gap-6 pb-36">
+          <div className="flex w-full flex-col gap-6 pb-36">
             {renderPromptSection()}
             {renderResultsSections()}
           </div>

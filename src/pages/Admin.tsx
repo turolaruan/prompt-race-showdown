@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Layers,
   Server,
+  Loader2,
 } from "lucide-react";
 
 type UploadCategory = "models" | "arena_responses" | "arena_votes" | "leaderboard" | "benchmarks";
@@ -28,6 +29,7 @@ type TableName = "models" | "arena_responses" | "arena_votes" | "leaderboard_res
 
 const Admin = () => {
   const [uploading, setUploading] = useState(false);
+  const [clearingLeaderboard, setClearingLeaderboard] = useState(false);
   const { toast } = useToast();
   const { clearHistory } = useChatHistory();
   const { collapsed: isSidebarCollapsed, toggle: toggleSidebar } = useSidebar();
@@ -372,12 +374,20 @@ const Admin = () => {
       description: "Todos os chats locais foram removidos.",
     });
   };
+  const handleClearLeaderboard = async () => {
+    try {
+      setClearingLeaderboard(true);
+      await clearTable("leaderboard_results");
+    } finally {
+      setClearingLeaderboard(false);
+    }
+  };
   const clearTable = async (tableName: TableName) => {
     try {
-      const { error } = await supabase.from(tableName).delete().gte('created_at', '1970-01-01');
-      
+      const { error } = await supabase.from(tableName).delete().not("id", "is", null);
+
       if (error) throw error;
-      
+
       toast({
         title: "Tabela limpa!",
         description: `Todos os dados de ${tableName} foram removidos.`,
@@ -464,6 +474,43 @@ const Admin = () => {
                   </Button>
                   <p className="text-xs text-muted-foreground">
                     Utilize esta ação caso esteja configurando um novo ambiente ou precise reiniciar testes.
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className={cardBaseClass}>
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div className="space-y-2">
+                    <Badge variant="outline" className="w-fit rounded-full border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+                      Leaderboard
+                    </Badge>
+                    <CardTitle className="text-xl text-foreground">Ranking Consolidado</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Limpa todos os registros da tabela de ranking do leaderboard para iniciar uma nova apuração.
+                    </p>
+                  </div>
+                  <span className="rounded-2xl border border-white/10 bg-white/10 p-2 text-muted-foreground">
+                    <TrendingUp className="h-5 w-5" />
+                  </span>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  <Button
+                    variant="destructive"
+                    onClick={handleClearLeaderboard}
+                    disabled={clearingLeaderboard}
+                    className="w-full rounded-2xl"
+                  >
+                    {clearingLeaderboard ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Limpando ranking...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="mr-2 h-4 w-4" /> Limpar ranking do leaderboard
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Esta ação remove todos os modelos ranqueados e libera a tabela <code>leaderboard_results</code>.
                   </p>
                 </CardContent>
               </Card>

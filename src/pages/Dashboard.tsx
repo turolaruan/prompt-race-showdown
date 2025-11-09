@@ -58,6 +58,7 @@ interface EvalResultsFile {
 
 const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
 const ITEMS_PER_PAGE = 5;
+const MAX_HEATMAP_BENCHMARKS = 10;
 
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
   if (!modelPath) return null;
@@ -297,6 +298,48 @@ const Dashboard = () => {
     () => benchmarks.filter(b => passesFilters(b, { ignoreBenchmark: true })),
     [benchmarks, passesFilters]
   );
+
+  const formatNumber = (value?: number | null, fractionDigits = 2) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return new Intl.NumberFormat("pt-BR", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(value);
+  };
+
+  const formatPercentage = (value?: number | null) => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return "—";
+    }
+    return `${formatNumber(value, 2)}%`;
+  };
+
+  const formatLabel = (value?: string | null, fallback = "—") => {
+    if (!value) return fallback;
+    return value
+      .split(/[_-]/)
+      .filter(Boolean)
+      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" ");
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return "—";
+    }
+    return parsed.toLocaleDateString();
+  };
+
+  const normalizeAccuracyValue = (value?: number | null): number | null => {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return null;
+    }
+    return Math.max(0, Math.min(value, 100));
+  };
 
 
   const resolvedTasks = benchmarks
@@ -603,13 +646,27 @@ const Dashboard = () => {
       .map(benchmark => ({
         id: benchmark.id,
         benchmarkName: resolveBenchmark(benchmark) ?? "Benchmark desconhecido",
-        accuracy: typeof benchmark.accuracy_percent === "number" ? benchmark.accuracy_percent : 0,
+        datasetName: resolveTask(benchmark),
+        technique: resolveTechnique(benchmark),
+        accuracy: normalizeAccuracyValue(benchmark.accuracy_percent),
         createdAt: benchmark.created_at ?? null,
         correct: typeof benchmark.correct === "number" ? benchmark.correct : null,
         total: typeof benchmark.total === "number" ? benchmark.total : null,
       }))
-      .sort((a, b) => b.accuracy - a.accuracy);
-  }, [benchmarksForAverages, resolveBenchmark, resolveModelName, selectedAverageModelStats]);
+      .sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0));
+  }, [
+    benchmarksForAverages,
+    resolveBenchmark,
+    resolveModelName,
+    resolveTask,
+    resolveTechnique,
+    selectedAverageModelStats,
+  ]);
+
+  const displayedAverageBenchmarks = useMemo(
+    () => selectedAverageModelBenchmarks.slice(0, MAX_HEATMAP_BENCHMARKS),
+    [selectedAverageModelBenchmarks]
+  );
 
   const modelAverageOptions = useMemo(
     () =>
@@ -618,41 +675,6 @@ const Dashboard = () => {
       ),
     [modelAverageStats]
   );
-
-  const formatNumber = (value?: number | null, fractionDigits = 2) => {
-    if (typeof value !== "number" || Number.isNaN(value)) {
-      return "—";
-    }
-    return new Intl.NumberFormat("pt-BR", {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits,
-    }).format(value);
-  };
-
-  const formatPercentage = (value?: number | null) => {
-    if (typeof value !== "number" || Number.isNaN(value)) {
-      return "—";
-    }
-    return `${formatNumber(value, 2)}%`;
-  };
-
-  const formatLabel = (value?: string | null, fallback = "—") => {
-    if (!value) return fallback;
-    return value
-      .split(/[_-]/)
-      .filter(Boolean)
-      .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
-      .join(" ");
-  };
-
-  const formatDate = (value?: string | null) => {
-    if (!value) return "—";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) {
-      return "—";
-    }
-    return parsed.toLocaleDateString();
-  };
 
   const getPrimaryAnswerType = (benchmark: BenchmarkDetails) => {
     if (!benchmark.by_answer_type) return null;
@@ -1119,41 +1141,58 @@ const Dashboard = () => {
                     <Activity className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {selectedAverageModelBenchmarks.length === 0 ? (
+                    {displayedAverageBenchmarks.length === 0 ? (
                       <p className="text-sm text-muted-foreground/80">
                         Nenhum registro detalhado disponível para este modelo.
                       </p>
                     ) : (
-                      selectedAverageModelBenchmarks.slice(0, 8).map(item => {
-                        const formattedName = formatLabel(item.benchmarkName, "—");
-                        const accuracyLabel = formatPercentage(item.accuracy);
-                        const attemptsLabel =
-                          typeof item.correct === "number" && typeof item.total === "number"
-                            ? `${item.correct} / ${item.total}`
-                            : null;
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {displayedAverageBenchmarks.map(item => {
+                          const formattedName = formatLabel(item.benchmarkName, "—");
+                          const accuracyLabel = formatPercentage(item.accuracy);
+                          const attemptsLabel =
+                            typeof item.correct === "number" && typeof item.total === "number"
+                              ? `${item.correct} / ${item.total}`
+                              : null;
+                          const datasetLabel =
+                            item.datasetName && item.datasetName !== "Tarefa desconhecida"
+                              ? formatLabel(item.datasetName, "")
+                              : null;
 
-                        return (
-                          <div
-                            key={`${item.id ?? item.benchmarkName}`}
-                            className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
-                          >
-                            <div className="space-y-1">
-                              <p className="text-sm font-semibold text-foreground">{formattedName}</p>
-                              {item.createdAt ? (
-                                <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground/70">
-                                  {`Rodado em ${formatDate(item.createdAt)}`}
-                                </p>
-                              ) : null}
+                          return (
+                            <div
+                              key={`${item.id ?? item.benchmarkName}`}
+                              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold text-foreground">{formattedName}</p>
+                                  {datasetLabel && (
+                                    <Badge className="mt-1 w-fit border border-primary/30 bg-primary/10 text-[11px] font-semibold uppercase tracking-[0.35em] text-primary">
+                                      {datasetLabel}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {item.createdAt && (
+                                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                                    {formatDate(item.createdAt)}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                                  Acurácia {accuracyLabel}
+                                </span>
+                                {attemptsLabel && (
+                                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-foreground">
+                                    {attemptsLabel}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-foreground">{accuracyLabel}</p>
-                              {attemptsLabel && (
-                                <p className="text-[11px] text-muted-foreground/80">{attemptsLabel}</p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                   </CardContent>
                 </Card>
