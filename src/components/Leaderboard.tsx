@@ -704,11 +704,7 @@ const Leaderboard = () => {
                     : formatLabel(entry.modelId);
                 const techniqueLabel = entry.technique || "Modelo base";
                 const taskLabel = entry.task !== "Não especificada" ? entry.task : null;
-                const benchmarkLabel = entry.benchmark !== "Não especificado" ? entry.benchmark : null;
-                const badges = [
-                  taskLabel ? { prefix: "Tarefa", value: taskLabel } : null,
-                  benchmarkLabel ? { prefix: "Benchmark", value: benchmarkLabel } : null,
-                ].filter((item): item is { prefix: string; value: string } => Boolean(item));
+                const badges = taskLabel ? [{ prefix: "Tarefa", value: taskLabel }] : [];
 
                 return (
                   <div
