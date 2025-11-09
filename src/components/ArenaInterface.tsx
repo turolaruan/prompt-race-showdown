@@ -1080,7 +1080,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={1}
-                className="min-h-[52px] w-full resize-none rounded-2xl border border-white/10 bg-black/40 py-3 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+                className="min-h-[70px] w-full resize-none overflow-hidden rounded-2xl border border-white/10 bg-black/40 py-4 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isRunning}
                 onInput={(e) => {
                   adjustTextareaHeight(e.currentTarget);
