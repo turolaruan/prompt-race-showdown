@@ -68,7 +68,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
   return (
     <aside
       className={cn(
-        "flex-shrink-0 w-full min-h-screen overflow-y-auto border-b border-sidebar-border bg-sidebar transition-all duration-300 lg:flex lg:h-screen lg:flex-col lg:overflow-y-auto lg:border-b-0 lg:border-r lg:sticky lg:top-0 lg:self-start",
+        "flex-shrink-0 w-full min-h-screen overflow-hidden border-b border-sidebar-border bg-sidebar transition-all duration-300 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden lg:border-b-0 lg:border-r lg:sticky lg:top-0 lg:self-start",
         collapsed ? "lg:w-20" : "lg:w-80"
       )}
     >
@@ -81,8 +81,8 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
               </span>
               {!collapsed && (
                 <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-sidebar-foreground/60">AI Arena</p>
-                  <p className="text-xl font-bold text-sidebar-foreground">GB-CS-RT</p>
+                  <p className="text-base uppercase tracking-[0.2em] text-sidebar-foreground/60">AI Arena</p>
+                  <p className="text-2xl font-bold text-sidebar-foreground">GB-CS-RT</p>
                 </div>
               )}
             </div>
@@ -100,7 +100,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
         <nav className={cn("flex-1 space-y-6 py-6", collapsed ? "px-2" : "px-6") }>
           <div className={cn("space-y-3", collapsed && "space-y-2") }>
             {!collapsed && (
-              <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/60">
+              <p className="text-sm font-semibold uppercase tracking-widest text-sidebar-foreground/60">
                 Navegação
               </p>
             )}
@@ -137,8 +137,8 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                       </span>
                       {!collapsed && (
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold leading-none">{item.label}</span>
-                          <span className="mt-1 text-xs text-sidebar-foreground/60">{item.description}</span>
+                          <span className="text-lg font-semibold leading-tight">{item.label}</span>
+                          <span className="mt-1 text-sm text-sidebar-foreground/60">{item.description}</span>
                         </div>
                       )}
                     </button>
@@ -168,8 +168,8 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                       </span>
                       {!collapsed && (
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold leading-none">{item.label}</span>
-                          <span className="mt-1 text-xs text-sidebar-foreground/60">{item.description}</span>
+                          <span className="text-lg font-semibold leading-tight">{item.label}</span>
+                          <span className="mt-1 text-sm text-sidebar-foreground/60">{item.description}</span>
                         </div>
                       )}
                     </div>
@@ -180,7 +180,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
           </div>
           {!collapsed && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-sidebar-foreground/60">
+              <p className="text-sm font-semibold uppercase tracking-widest text-sidebar-foreground/60">
                 Histórico
               </p>
               <div
@@ -190,7 +190,7 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                 )}
               >
                 {historyItems.length === 0 && (
-                  <p className="text-xs text-sidebar-foreground/50">Nenhum chat registrado ainda.</p>
+                  <p className="text-sm text-sidebar-foreground/50">Nenhum chat registrado ainda.</p>
                 )}
                 {historyItems.map(chat => {
                   const activeChat = currentChatId === chat.id;
@@ -213,23 +213,23 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
                         isChatActive && "border-primary/40 bg-primary/10"
                       )}
                     >
-                      <p className="truncate text-sm font-medium text-sidebar-foreground">
+                      <p className="truncate text-lg font-semibold text-sidebar-foreground">
                         {chat.prompt || "Prompt sem título"}
                       </p>
-                      <div className="mt-2 flex items-center justify-between text-[11px] text-sidebar-foreground/60">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {new Date(chat.updatedAt ?? chat.timestamp).toLocaleDateString()}
-                        </span>
+                      <div className="mt-2 space-y-1 text-sm">
                         {chat.winner && (
                           <span
-                            className="flex min-w-0 items-center gap-1 text-emerald-400"
+                            className="flex items-center gap-1 text-emerald-400"
                             title={chat.winner}
                           >
                             <Trophy className="h-3.5 w-3.5 shrink-0" />
-                            <span className="max-w-[110px] truncate">{chat.winner}</span>
+                            <span className="truncate">{chat.winner}</span>
                           </span>
                         )}
+                        <span className="flex items-center gap-1 text-sidebar-foreground/60">
+                          <Clock className="h-3.5 w-3.5" />
+                          {new Date(chat.updatedAt ?? chat.timestamp).toLocaleDateString()}
+                        </span>
                       </div>
                     </button>
                   );
@@ -238,12 +238,6 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
             </div>
           )}
         </nav>
-
-        {!collapsed && (
-          <div className="px-6 pb-6 pt-2 text-xs text-sidebar-foreground/50">
-            <p>Powered by Prompt Race Showdown</p>
-          </div>
-        )}
       </div>
     </aside>
   );

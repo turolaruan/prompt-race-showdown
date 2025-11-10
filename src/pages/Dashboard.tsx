@@ -57,8 +57,15 @@ interface EvalResultsFile {
 }
 
 const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
+const KNOWN_MODEL_FAMILIES = [
+  "Llama-3.2-3B-Instruct",
+  "Phi-4-mini-instruct",
+  "Qwen3-4B-Instruct-2507",
+  "gemma-3-4b-it",
+];
 const ITEMS_PER_PAGE = 5;
 const MAX_HEATMAP_BENCHMARKS = 10;
+const DASHBOARD_CONTAINER = "mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-16";
 
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
   if (!modelPath) return null;
@@ -349,15 +356,90 @@ const Dashboard = () => {
   const extraTasks = resolvedTasks.filter(task => !KNOWN_TASKS.includes(task));
   const uniqueExtraTasks = Array.from(new Set(extraTasks));
   const uniqueTasks = [...knownTasksInData, ...uniqueExtraTasks];
-  const uniqueModels = Array.from(
-    new Set(benchmarks.map(resolveModelName).filter((model): model is string => Boolean(model)))
-  );
+  const uniqueModels = useMemo(() => {
+    const models = benchmarks.map(benchmark => {
+      const name = resolveModelName(benchmark);
+      const familyRaw = resolveModelFamily(benchmark);
+      const taskRaw = resolveTask(benchmark);
+      const family =
+        familyRaw && familyRaw !== "Família desconhecida" ? familyRaw : KNOWN_MODEL_FAMILIES.find(item => item === name);
+      return { name, family, task: taskRaw };
+    });
+
+    const filteredByFamily =
+      selectedModelFamily === "all"
+        ? models
+        : models.filter(model => {
+          if (!model.family) return false;
+          return model.family.toLowerCase() === selectedModelFamily.toLowerCase();
+        });
+
+    const filteredByTask =
+      selectedTask === "all"
+        ? filteredByFamily
+        : filteredByFamily.filter(model => {
+            if (!model.task || model.task === "Tarefa desconhecida") return false;
+            return model.task.toLowerCase() === selectedTask.toLowerCase();
+          });
+
+    return Array.from(
+      new Set(filteredByTask.map(model => model.name).filter((model): model is string => Boolean(model)))
+    );
+  }, [benchmarks, selectedModelFamily, selectedTask]);
+
+  useEffect(() => {
+    if (selectedModelFamily === "all" && selectedTask === "all") return;
+    if (selectedModel === "all") return;
+    if (!uniqueModels.includes(selectedModel)) {
+      setSelectedModel("all");
+    }
+  }, [selectedModelFamily, selectedTask, selectedModel, uniqueModels]);
   const uniqueModelFamilies = Array.from(
     new Set(benchmarks.map(resolveModelFamily).filter((family): family is string => Boolean(family)))
   );
-  const uniqueTechniques = Array.from(
-    new Set(benchmarks.map(resolveTechnique).filter((tech): tech is string => Boolean(tech)))
-  );
+
+  const uniqueTechniques = useMemo(() => {
+    const techniques = benchmarks.map(benchmark => {
+      const technique = resolveTechnique(benchmark);
+      const family = resolveModelFamily(benchmark);
+      const task = resolveTask(benchmark);
+      const modelName = resolveModelName(benchmark);
+      return {
+        technique,
+        family,
+        task,
+        modelName,
+      };
+    });
+
+    const filteredByFamily =
+      selectedModelFamily === "all"
+        ? techniques
+        : techniques.filter(item => {
+            if (!item.family) return false;
+            return item.family.toLowerCase() === selectedModelFamily.toLowerCase();
+          });
+
+    const filteredByTask =
+      selectedTask === "all"
+        ? filteredByFamily
+        : filteredByFamily.filter(item => {
+            if (!item.task || item.task === "Tarefa desconhecida") return false;
+            return item.task.toLowerCase() === selectedTask.toLowerCase();
+          });
+
+    const filteredByModel =
+      selectedModel === "all"
+        ? filteredByTask
+        : filteredByTask.filter(item => {
+            if (!item.modelName) return false;
+            return item.modelName === selectedModel;
+          });
+
+    return Array.from(
+      new Set(filteredByModel.map(item => item.technique).filter((tech): tech is string => Boolean(tech)))
+    );
+  }, [benchmarks, selectedModelFamily, selectedTask, selectedModel, resolveTechnique, resolveModelFamily, resolveTask, resolveModelName]);
   const KNOWN_BENCHMARKS = ["bbh", "gpqa", "gsm8k_bench", "hendrycks_math", "mmlu"];
   const resolvedBenchmarks = benchmarks
     .map(resolveBenchmark)
@@ -407,10 +489,6 @@ const Dashboard = () => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return orderedBenchmarks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [orderedBenchmarks, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedTask, selectedModel, selectedModelFamily, selectedTechnique, selectedBenchmark, rankingOrder]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -617,26 +695,18 @@ const Dashboard = () => {
       .sort((a, b) => b.average - a.average);
   }, [benchmarksForAverages, resolveModelName, resolveBenchmark]);
 
-  useEffect(() => {
-    if (modelAverageStats.length === 0) {
-      setSelectedAverageModel(null);
-      return;
-    }
-    const hasSelection =
-      selectedAverageModel && modelAverageStats.some(stat => stat.modelName === selectedAverageModel);
-    if (!hasSelection) {
-      setSelectedAverageModel(modelAverageStats[0]?.modelName ?? null);
-    }
-  }, [modelAverageStats, selectedAverageModel]);
-
   const selectedAverageModelStats = useMemo(() => {
     if (modelAverageStats.length === 0) return null;
-    const target = selectedAverageModel ?? modelAverageStats[0]?.modelName;
-    if (!target) return null;
-    return modelAverageStats.find(stat => stat.modelName === target) ?? modelAverageStats[0] ?? null;
-  }, [modelAverageStats, selectedAverageModel]);
-
-  const averageModelSelectValue = selectedAverageModel ?? (modelAverageStats[0]?.modelName ?? "");
+    return [...modelAverageStats].sort((a, b) => b.average - a.average)[0];
+  }, [modelAverageStats]);
+  const handleResetFilters = () => {
+    setSelectedTask("all");
+    setSelectedModelFamily("all");
+    setSelectedModel("all");
+    setSelectedTechnique("all");
+    setSelectedBenchmark("all");
+    setRankingOrder("desc");
+  };
 
   const selectedAverageModelBenchmarks = useMemo(() => {
     if (!selectedAverageModelStats) return [];
@@ -668,14 +738,6 @@ const Dashboard = () => {
     [selectedAverageModelBenchmarks]
   );
 
-  const modelAverageOptions = useMemo(
-    () =>
-      [...modelAverageStats].sort((a, b) =>
-        a.modelName.localeCompare(b.modelName, undefined, { sensitivity: "accent" })
-      ),
-    [modelAverageStats]
-  );
-
   const getPrimaryAnswerType = (benchmark: BenchmarkDetails) => {
     if (!benchmark.by_answer_type) return null;
     const [label, stats] = Object.entries(benchmark.by_answer_type)[0] ?? [];
@@ -688,19 +750,19 @@ const Dashboard = () => {
       <AppSidebar collapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <main className="relative flex-1 overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.22)_0%,rgba(17,24,39,0.92)_45%,rgba(3,7,18,1)_100%)]">
         <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-[110rem] flex-wrap items-center justify-between gap-4 px-6 py-4 sm:px-10 lg:px-12">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Dashboard</p>
+          <div className={cn(DASHBOARD_CONTAINER, "flex w-full flex-wrap items-center justify-between gap-4 py-6")}>
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">Dashboard</p>
               <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Benchmark Center</h1>
-              <p className="text-base text-muted-foreground/90 sm:text-lg">
+              <p className="max-w-3xl text-lg text-muted-foreground/90 sm:text-xl">
                 Explore métricas, filtros e evolução dos modelos em diferentes tarefas.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button className="rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-primary/70 px-6 py-2 text-sm font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent">
-                    <Download className="mr-2 h-4 w-4" />
+                  <Button className="rounded-2xl border border-white/10 bg-gradient-to-r from-primary to-primary/70 px-6 py-2 text-base font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent">
+                    <Download className="mr-2 h-5 w-5" />
                     Exportar
                   </Button>
                 </DropdownMenuTrigger>
@@ -727,8 +789,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-[110rem] flex-col gap-8 px-6 py-8 sm:px-10 lg:px-12">
+        <div className="custom-scrollbar flex-1 overflow-y-auto">
+          <div className={cn(DASHBOARD_CONTAINER, "flex w-full flex-col gap-10 py-10")}>
             <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_40px_140px_-70px_rgba(147,51,234,0.6)] sm:p-10">
               <div className="pointer-events-none absolute inset-0">
                 <div className="absolute -top-24 right-20 h-64 w-64 rounded-full bg-primary/25 blur-3xl" />
@@ -737,40 +799,40 @@ const Dashboard = () => {
               <div className="relative grid gap-6 sm:grid-cols-3">
                 <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                       Total de Benchmarks
                     </CardTitle>
-                    <Trophy className="h-4 w-4 text-primary" />
+                    <Trophy className="h-5 w-5 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{filteredBenchmarks.length}</div>
-                    <p className="text-sm text-muted-foreground/90 sm:text-base">Resultados registrados após aplicar filtros</p>
+                    <div className="text-4xl font-semibold text-foreground sm:text-5xl">{filteredBenchmarks.length}</div>
+                    <p className="text-base text-muted-foreground/90 sm:text-lg">Resultados registrados após aplicar filtros</p>
                   </CardContent>
                 </Card>
 
                 <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                       Score médio
                     </CardTitle>
-                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <TrendingUp className="h-5 w-5 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{averageScore}</div>
-                    <p className="text-sm text-muted-foreground/90 sm:text-base">Performance média considerando os resultados listados</p>
+                    <div className="text-4xl font-semibold text-foreground sm:text-5xl">{averageScore}</div>
+                    <p className="text-base text-muted-foreground/90 sm:text-lg">Performance média considerando os resultados listados</p>
                   </CardContent>
                 </Card>
 
                 <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                    <CardTitle className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                       Modelos avaliados
                     </CardTitle>
-                    <BarChart3 className="h-4 w-4 text-primary" />
+                    <BarChart3 className="h-5 w-5 text-primary" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-[28px] font-semibold text-foreground sm:text-4xl">{uniqueModels.length}</div>
-                    <p className="text-sm text-muted-foreground/90 sm:text-base">Diversidade de modelos presentes no recorte atual</p>
+                    <div className="text-4xl font-semibold text-foreground sm:text-5xl">{uniqueModels.length}</div>
+                    <p className="text-base text-muted-foreground/90 sm:text-lg">Diversidade de modelos presentes no recorte atual</p>
                   </CardContent>
                 </Card>
               </div>
@@ -785,11 +847,11 @@ const Dashboard = () => {
             </div>
             <div className="relative mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
+                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                   Destaques
                 </p>
-                <h2 className="text-xl font-semibold text-foreground sm:text-2xl">Top 3 modelos filtrados</h2>
-                <p className="text-base text-muted-foreground/90 sm:text-lg">
+                <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Top 3 modelos filtrados</h2>
+                <p className="text-lg text-muted-foreground/90 sm:text-xl">
                   Destaque dos modelos com maior acurácia considerando os filtros ativos.
                 </p>
               </div>
@@ -840,15 +902,15 @@ const Dashboard = () => {
                             {index + 1}
                           </div>
                           <div className="space-y-1">
-                            <p className="max-w-[220px] truncate text-lg font-semibold text-foreground" title={modelName}>
+                            <p className="max-w-[220px] truncate text-2xl font-semibold text-foreground" title={modelName}>
                               {modelName}
                             </p>
-                            <p className="text-sm text-muted-foreground/80">{taskLabel}</p>
+                            <p className="text-base text-muted-foreground/80">{taskLabel}</p>
                           </div>
                         </div>
                         <span
                           className={cn(
-                            "inline-flex min-w-[82px] items-center justify-center rounded-full px-3 py-1 text-sm font-semibold leading-none text-white shadow-[0_20px_48px_-28px_rgba(236,72,153,0.55)]",
+                            "inline-flex min-w-[82px] items-center justify-center rounded-full px-4 py-1.5 text-base font-semibold leading-none text-white shadow-[0_20px_48px_-28px_rgba(236,72,153,0.55)]",
                             theme.badge
                           )}
                         >
@@ -875,7 +937,7 @@ const Dashboard = () => {
                           <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
                             Total
                           </span>
-                          <span className="text-lg font-semibold text-foreground">
+                          <span className="text-2xl font-semibold text-foreground">
                             {typeof model.total === "number" ? model.total : "—"}
                           </span>
                         </div>
@@ -883,7 +945,7 @@ const Dashboard = () => {
                           <span className="text-[11px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
                             Corretas
                           </span>
-                          <span className="text-lg font-semibold text-foreground">
+                          <span className="text-2xl font-semibold text-foreground">
                             {typeof model.correct === "number" ? model.correct : "—"}
                           </span>
                         </div>
@@ -900,17 +962,50 @@ const Dashboard = () => {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_30px_100px_-70px_rgba(147,51,234,0.55)] sm:p-8">
           <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                 Filtros avançados
               </p>
-              <h3 className="text-lg font-semibold text-foreground sm:text-xl">
+              <h3 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 Refine a lista de benchmarks
               </h3>
             </div>
+            <Button
+              variant="ghost"
+              onClick={handleResetFilters}
+              className="rounded-full border border-white/10 bg-gradient-to-r from-primary to-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-primary-foreground shadow-[0_18px_50px_-30px_rgba(147,51,234,0.6)] hover:from-primary/90 hover:to-accent/90"
+            >
+              Limpar filtros
+            </Button>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <Select value={selectedTask} onValueChange={setSelectedTask}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+          <div
+            className={cn(
+              "grid gap-4",
+              isModelView ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+            )}
+          >
+            <Select
+              value={selectedTask}
+              onValueChange={value => {
+                if (selectedTask === value) {
+                  setSelectedTask(value);
+                  return;
+                }
+
+                if (isModelView) {
+                  setSelectedModelFamily("all");
+                  setSelectedModel("all");
+                  setSelectedTechnique("all");
+                } else {
+                  setSelectedModelFamily("all");
+                  setSelectedModel("all");
+                  setSelectedTechnique("all");
+                  setSelectedBenchmark("all");
+                  setRankingOrder("desc");
+                }
+                setSelectedTask(value);
+              }}
+            >
+              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                 <SelectValue placeholder="Filtrar por tarefa" />
               </SelectTrigger>
               <SelectContent>
@@ -923,22 +1018,8 @@ const Dashboard = () => {
               </SelectContent>
             </Select>
 
-            <Select value={selectedModel} onValueChange={setSelectedModel}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
-                <SelectValue placeholder="Filtrar por modelo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Modelos</SelectItem>
-                {uniqueModels.map(model => (
-                  <SelectItem key={model} value={model}>
-                    {model}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Select value={selectedModelFamily} onValueChange={setSelectedModelFamily}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                 <SelectValue placeholder="Filtrar por família" />
               </SelectTrigger>
               <SelectContent>
@@ -951,8 +1032,22 @@ const Dashboard = () => {
               </SelectContent>
             </Select>
 
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
+                <SelectValue placeholder="Filtrar por modelo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Modelos</SelectItem>
+                {uniqueModels.map(model => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={selectedTechnique} onValueChange={setSelectedTechnique}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                 <SelectValue placeholder="Filtrar por técnica" />
               </SelectTrigger>
               <SelectContent>
@@ -965,29 +1060,33 @@ const Dashboard = () => {
               </SelectContent>
             </Select>
 
-            <Select value={selectedBenchmark} onValueChange={setSelectedBenchmark}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
-                <SelectValue placeholder="Filtrar por benchmark" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Benchmarks</SelectItem>
-                {uniqueBenchmarks.map(benchmark => (
-                  <SelectItem key={benchmark} value={benchmark}>
-                    {benchmark}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isListView && (
+              <>
+                <Select value={selectedBenchmark} onValueChange={setSelectedBenchmark}>
+                  <SelectTrigger className="h-12 min-w-[220px] rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground [&>span]:text-left">
+                    <SelectValue placeholder="Filtrar por benchmark" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Benchmarks</SelectItem>
+                    {uniqueBenchmarks.map(benchmark => (
+                      <SelectItem key={benchmark} value={benchmark}>
+                        {benchmark}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-            <Select value={rankingOrder} onValueChange={value => setRankingOrder(value as "asc" | "desc")}>
-              <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
-                <SelectValue placeholder="Ordenar por ranking" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Ranking: Maior → Menor</SelectItem>
-                <SelectItem value="asc">Ranking: Menor → Maior</SelectItem>
-              </SelectContent>
-            </Select>
+                <Select value={rankingOrder} onValueChange={value => setRankingOrder(value as "asc" | "desc")}>
+                  <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
+                    <SelectValue placeholder="Ordenar por ranking" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="desc">Ranking: Maior → Menor</SelectItem>
+                    <SelectItem value="asc">Ranking: Menor → Maior</SelectItem>
+                  </SelectContent>
+                </Select>
+              </>
+            )}
           </div>
         </section>
 
@@ -995,13 +1094,13 @@ const Dashboard = () => {
         <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_32px_110px_-70px_rgba(147,51,234,0.58)] sm:p-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
+              <p className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">
                 {isListView ? "Resultados detalhados" : "Visão agregada"}
               </p>
-              <h3 className="text-lg font-semibold text-foreground sm:text-xl">
+              <h3 className="text-2xl font-semibold text-foreground sm:text-3xl">
                 {isListView ? "Benchmarks por modelo" : "Média de performance por modelo"}
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-base text-muted-foreground">
                 {isListView
                   ? "Consulte métricas individuais, tempos de execução e classificações."
                   : "Compare médias de acurácia e identifique destaques de cada modelo."}
@@ -1013,26 +1112,15 @@ const Dashboard = () => {
                   {orderedBenchmarks.length} {orderedBenchmarks.length === 1 ? "registro" : "registros"}
                 </div>
               )}
-              {isModelView && modelAverageOptions.length > 0 && (
-                <Select value={averageModelSelectValue} onValueChange={value => setSelectedAverageModel(value)}>
-                  <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground md:w-64">
-                    <SelectValue placeholder="Selecionar modelo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modelAverageOptions.map(stat => (
-                      <SelectItem key={stat.modelName} value={stat.modelName}>
-                        {stat.modelName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
               <div className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setBenchmarkViewMode("list")}
+                  onClick={() => {
+                    setBenchmarkViewMode("list");
+                    handleResetFilters();
+                  }}
                   className={cn(
                     "flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em]",
                     isListView
@@ -1047,7 +1135,10 @@ const Dashboard = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setBenchmarkViewMode("models")}
+                  onClick={() => {
+                    setBenchmarkViewMode("models");
+                    handleResetFilters();
+                  }}
                   className={cn(
                     "flex items-center gap-2 rounded-full px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.3em]",
                     isModelView
@@ -1242,32 +1333,30 @@ const Dashboard = () => {
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-1">
-                          <h3 className="text-xl font-semibold text-foreground">{modelName}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {[datasetLabel]
-                              .filter(Boolean)
-                              .join(" • ")}
+                          <h3 className="text-2xl font-semibold text-foreground">{modelName}</h3>
+                          <p className="text-base text-muted-foreground">
+                            {[datasetLabel].filter(Boolean).join(" • ")}
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {techniqueLabel && techniqueLabel !== "Técnica desconhecida" && (
                             <Badge
                               variant="outline"
-                              className="rounded-full border-white/20 bg-white/10 text-xs uppercase tracking-wide text-muted-foreground"
+                              className="rounded-full border-white/20 bg-white/10 px-4 py-1 text-sm uppercase tracking-wider text-muted-foreground"
                             >
                               {techniqueLabel}
                             </Badge>
                           )}
                           <Badge
                             variant="secondary"
-                            className="rounded-full border border-primary/30 bg-primary/15 px-3 py-1 text-lg font-semibold text-primary"
+                            className="rounded-full border border-primary/30 bg-primary/15 px-4 py-1 text-xl font-semibold text-primary"
                           >
                             {scoreDisplay !== "—" ? `${scoreDisplay}%` : "Score não disponível"}
                           </Badge>
                         </div>
                       </div>
 
-                      <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground/80">
+                      <div className="mt-4 flex flex-wrap items-center gap-4 text-base text-muted-foreground/80">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
                           {formatDate(benchmark.created_at)}

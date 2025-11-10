@@ -189,7 +189,7 @@ const renderAnswerWithThinkStyling = (text: string): ReactNode => {
 
   return segments.map((segment, index) =>
     segment.type === "think" ? (
-      <span key={`think-${index}`} className="block text-[0.95rem] text-muted-foreground/75">
+      <span key={`think-${index}`} className="block text-[1.1rem] text-muted-foreground/75">
         {segment.content.trim()}
       </span>
     ) : (
@@ -812,9 +812,9 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
           <div className="relative space-y-6 p-6 sm:p-10">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Processando</p>
-                <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Gerando respostas...</h2>
-                <p className="max-w-3xl text-base text-muted-foreground/90 sm:text-lg">
+                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">Processando</p>
+                <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Gerando respostas...</h2>
+                <p className="max-w-3xl text-lg text-muted-foreground/90 sm:text-xl">
                   Prompt enviado:{" "}
                   <span className="font-medium text-primary/85">{pendingPrompt}</span>
                 </p>
@@ -822,8 +822,8 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             </div>
             <div className="flex min-h-[220px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 text-center">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
-              <p className="mt-4 text-base font-semibold text-foreground">Consultando modelos...</p>
-              <p className="mt-2 max-w-md text-base text-muted-foreground/90 sm:text-lg">
+              <p className="mt-4 text-lg font-semibold text-foreground">Consultando modelos...</p>
+              <p className="mt-2 max-w-md text-lg text-muted-foreground/90 sm:text-xl">
                 Estamos analisando as respostas dos modelos selecionados. Isso pode levar alguns segundos.
               </p>
             </div>
@@ -869,7 +869,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
             <div className="relative space-y-8 p-5 sm:p-7">
               <div className="flex flex-wrap items-end justify-between gap-4 rounded-3xl border border-white/10 bg-white/5/60 px-5 py-4 shadow-[0_30px_80px_-60px_rgba(147,51,234,0.65)] backdrop-blur-lg">
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.35em]">
                     <span className={cn(isLatest ? "text-primary/70" : "text-muted-foreground/70")}>
                       {isLatest ? "Resultado atual" : "Histórico"}
                     </span>
@@ -877,10 +877,10 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                     <span className="text-muted-foreground/60">{turnDate}</span>
                   </div>
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-                    <h2 className="text-lg font-semibold text-foreground sm:text-xl md:text-[26px]">
+                    <h2 className="text-xl font-semibold text-foreground sm:text-2xl md:text-[30px]">
                       Comparativo de Respostas
                     </h2>
-                    <p className="text-xs text-muted-foreground sm:text-sm">
+                    <p className="text-lg text-muted-foreground sm:text-xl">
                       Prompt:{" "}
                       <span className="font-medium text-primary/85">{turn.prompt}</span>
                     </p>
@@ -888,7 +888,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 </div>
                 <div
                   className={cn(
-                    "rounded-full border px-3.5 py-1.5 text-sm font-semibold",
+                    "rounded-full border px-3.5 py-1.5 text-lg font-semibold",
                     isLatest
                       ? "border-primary/40 bg-primary/10 text-primary"
                       : "border-white/10 bg-white/5 text-muted-foreground/80"
@@ -936,18 +936,18 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                       <CardHeader className="flex flex-col gap-2 border-b border-white/10 bg-white/5/70 p-5 pb-4">
                         <div className="flex items-center justify-between gap-3">
                           <div className="space-y-1">
-                            <CardTitle className="text-xl font-semibold text-foreground sm:text-2xl">
+                            <CardTitle className="text-2xl font-semibold text-foreground sm:text-3xl">
                               Modelo {String.fromCharCode(65 + turnIndex)}
                             </CardTitle>
                             {shouldRevealModelLabel ? (
-                              <p className="text-base text-muted-foreground/80">{modelLabel}</p>
+                              <p className="text-lg text-muted-foreground/80">{modelLabel}</p>
                             ) : (
-                              <p className="text-sm italic text-muted-foreground/70">
+                              <p className="text-lg italic text-muted-foreground/70">
                                 Nome revelado após o voto
                               </p>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-sidebar-foreground/70">
+                          <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm font-medium text-sidebar-foreground/70">
                             <Timer className="h-4 w-4 text-primary" />
                             <span className="tracking-wide">{formatTime(durationMs)}</span>
                           </div>
@@ -965,7 +965,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                       </CardHeader>
                       <CardContent className="flex flex-1 flex-col p-0">
                         <div className="flex-1 space-y-5 border-b border-white/10 px-5 py-5">
-                          <p className="whitespace-pre-line text-lg leading-relaxed text-foreground sm:text-xl">
+                          <p className="whitespace-pre-line text-xl leading-relaxed text-foreground sm:text-2xl">
                             {renderAnswerWithThinkStyling(answerText)}
                           </p>
                         </div>
@@ -973,7 +973,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                           {isLatest && !hasResolvedWinner && (
                             <Button
                               onClick={() => handleVote(outputId)}
-                              className="w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-4 text-base font-semibold text-primary-foreground shadow-[0_20px_55px_-25px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
+                              className="w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 py-4 text-lg font-semibold text-primary-foreground shadow-[0_20px_55px_-25px_rgba(147,51,234,0.7)] hover:from-primary/90 hover:to-accent"
                             >
                               <ThumbsUp className="mr-2 h-4 w-4" /> Votar nesta resposta
                             </Button>
@@ -982,9 +982,9 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                             <div className="rounded-2xl border border-primary/40 bg-primary/10 p-4">
                               <div className="mb-2 flex items-center gap-3">
                                 <Trophy className="h-6 w-6 text-primary" />
-                                <h4 className="text-lg font-semibold text-primary">Seu voto contabilizado</h4>
+                                <h4 className="text-xl font-semibold text-primary">Seu voto contabilizado</h4>
                               </div>
-                              <p className="text-sm text-foreground">
+                              <p className="text-lg text-foreground">
                                 Você escolheu{" "}
                                 <span className="font-medium">
                                   {resolvedWinnerModelName ?? modelLabel}
@@ -1013,24 +1013,24 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     const suggestions = Array.from(suggestionsSet).slice(0, 6);
 
     return (
-      <section className="mx-auto flex w-full max-w-4xl flex-col items-center space-y-6 text-center">
+      <section className="mx-auto flex w-full max-w-[1400px] flex-col items-center space-y-6 px-2 text-center sm:px-4">
         <div className="space-y-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
-          <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">
+          <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">Arena</p>
+          <h1 className="text-3xl font-semibold text-foreground sm:text-4xl">
             Encontre a melhor IA para você
           </h1>
-          <p className="text-sm text-muted-foreground/90 sm:text-base">
+          <p className="mx-auto max-w-4xl text-lg text-muted-foreground/90 sm:text-xl">
             Faça perguntas, compare respostas entre modelos e registre seu feedback.
           </p>
           {outputsCount > 0 && (
-            <span className="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+            <span className="inline-flex items-center justify-center rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-sm font-semibold text-primary">
               {outputsCount} {outputsCount === 1 ? "resposta" : "respostas"} analisadas
             </span>
           )}
         </div>
 
         {suggestions.length > 0 && (
-          <div className="grid w-full gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid w-full gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {suggestions.map((suggestion, index) => {
               const accent = SUGGESTION_CARD_ACCENTS[index % SUGGESTION_CARD_ACCENTS.length];
               return (
@@ -1039,20 +1039,20 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                   type="button"
                   onClick={() => handleSuggestionSelect(suggestion)}
                   className={cn(
-                    "group relative flex h-full flex-col items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-left text-sm text-foreground transition-all duration-300 ease-out",
+                    "group relative flex h-full min-h-[220px] flex-col items-start gap-3 overflow-hidden rounded-3xl border border-white/10 bg-white/5 px-6 py-6 text-left text-lg text-foreground transition-all duration-300 ease-out",
                     "hover:-translate-y-1 hover:border-primary/60 hover:shadow-[0_28px_80px_-60px_rgba(147,51,234,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 active:scale-[0.99]",
                     accent,
                     "backdrop-blur-xl"
                   )}
                 >
-                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.35em] text-primary/70">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">
                     <Sparkles className="h-3.5 w-3.5 text-primary" />
                     Ideia
                   </div>
-                  <p className="flex-1 text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-white group-focus:text-white">
+                  <p className="flex-1 text-lg font-medium leading-snug text-foreground transition-colors group-hover:text-white group-focus:text-white">
                     {suggestion}
                   </p>
-                  <span className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.4em] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
+                  <span className="inline-flex w-fit items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.4em] text-primary transition group-hover:bg-primary group-hover:text-primary-foreground">
                     Usar
                   </span>
                 </button>
@@ -1080,7 +1080,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 rows={1}
-                className="min-h-[70px] w-full resize-none overflow-hidden rounded-2xl border border-white/10 bg-black/40 py-4 pr-16 text-base text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
+                className="min-h-[70px] w-full resize-none overflow-hidden rounded-2xl border border-white/10 bg-black/40 py-4 pr-16 text-lg text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary"
                 disabled={isRunning}
                 onInput={(e) => {
                   adjustTextareaHeight(e.currentTarget);
@@ -1108,29 +1108,45 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     </div>
   );
 
-  const renderMainContent = () =>
-    hasPromptInteraction ? (
+  const renderMainContent = () => {
+    const containerPadding = hasPromptInteraction ? "pb-36" : "pb-[260px]";
+    const baseWrapperClasses = cn("flex w-full justify-center", hasPromptInteraction ? "" : "overflow-visible");
+    const innerWrapperClasses = cn(
+      "flex w-full flex-col gap-6",
+      containerPadding,
+      hasPromptInteraction ? "" : "max-h-[calc(100vh-180px)] overflow-hidden"
+    );
+
+    return hasPromptInteraction ? (
       <div className="flex min-h-full w-full items-center justify-center py-10">
-        <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
-          <div className="flex w-full flex-col gap-6 pb-36">
+        <div className={cn(ARENA_CONTAINER, baseWrapperClasses)}>
+          <div className={innerWrapperClasses}>
             {renderResultsSections()}
           </div>
         </div>
       </div>
     ) : (
       <div className="flex min-h-full w-full items-center justify-center py-10">
-        <div className={cn(ARENA_CONTAINER, "flex w-full justify-center")}>
-          <div className="flex w-full flex-col gap-6 pb-36">
+        <div className={cn(ARENA_CONTAINER, baseWrapperClasses)}>
+          <div className={innerWrapperClasses}>
             {renderPromptSection()}
             {renderResultsSections()}
           </div>
         </div>
       </div>
     );
+  };
 
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.18)_0%,rgba(15,23,42,0.88)_45%,rgba(2,6,23,1)_100%)]">
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">{renderMainContent()}</div>
+      <div
+        className={cn(
+          "flex-1 overflow-x-hidden",
+          hasPromptInteraction ? "custom-scrollbar overflow-y-auto" : "overflow-hidden"
+        )}
+      >
+        {renderMainContent()}
+      </div>
       {!hasPromptInteraction && renderPromptComposer()}
     </div>
   );

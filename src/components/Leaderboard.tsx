@@ -54,8 +54,9 @@ interface ModelMetadata {
   benchmark: string | null;
 }
 
-const KNOWN_TASKS = ["aqua_ret", "esnli", "gsm8k", "math_qa", "strategy_qa"];
+const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
 const ITEMS_PER_PAGE = 5;
+const LEADERBOARD_CONTAINER = "mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-16";
 type ArenaVoteRow = Database["public"]["Tables"]["arena_votes"]["Row"] & {
   model_family?: string | null;
   modelFamily?: string | null;
@@ -385,6 +386,12 @@ const Leaderboard = () => {
     DISALLOWED_TECHNIQUES
   );
 
+  const handleResetFilters = () => {
+    setFilterTask("all");
+    setFilterModelFamily("all");
+    setFilterTechnique("all");
+  };
+
   // Filter data
   const filteredData = leaderboardData.filter(entry => {
     if (filterTechnique !== "all" && entry.technique !== filterTechnique) return false;
@@ -570,11 +577,11 @@ const Leaderboard = () => {
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden bg-[radial-gradient(140%_140%_at_0%_-20%,rgba(147,51,234,0.22)_0%,rgba(17,24,39,0.92)_45%,rgba(3,7,18,1)_100%)]">
       <div className="border-b border-white/10 bg-white/5/10 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[120rem] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8 lg:px-12">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.4em] text-primary/70">Leaderboard</p>
+        <div className={cn(LEADERBOARD_CONTAINER, "flex w-full flex-wrap items-center justify-between gap-4 py-6")}>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.4em] text-primary/70">Leaderboard</p>
             <h1 className="text-3xl font-bold text-foreground sm:text-4xl">Arena de Modelos</h1>
-            <p className="text-base text-muted-foreground/90 sm:text-lg">
+            <p className="max-w-3xl text-lg text-muted-foreground/90 sm:text-xl">
               Ranking atualizado com base nos votos da comunidade.
             </p>
           </div>
@@ -595,8 +602,8 @@ const Leaderboard = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-[120rem] flex-col gap-8 px-4 py-8 sm:px-8 lg:px-12">
+      <div className="custom-scrollbar flex-1 overflow-y-auto">
+        <div className={cn(LEADERBOARD_CONTAINER, "flex w-full flex-col gap-8 py-10")}>
           <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_38px_120px_-60px_rgba(147,51,234,0.6)] sm:p-10">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute -top-24 right-16 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
@@ -604,42 +611,49 @@ const Leaderboard = () => {
             </div>
             <div className="relative grid gap-6 sm:grid-cols-3">
               <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.3em] text-primary/70">
                   <Sparkles className="h-4 w-4" />
                   Modelos ativos
                 </p>
-                <p className="text-3xl font-semibold text-foreground">{totalEntries}</p>
-                <p className="text-sm text-muted-foreground/90 sm:text-base">Modelos ranqueados com votos recebidos</p>
+                <p className="text-4xl font-semibold text-foreground">{totalEntries}</p>
+                <p className="text-base text-muted-foreground/90 sm:text-lg">Modelos ranqueados com votos recebidos</p>
               </div>
               <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.3em] text-primary/70">
                   <Users className="h-4 w-4" />
                   Votos somados
                 </p>
-                <p className="text-3xl font-semibold text-foreground">{totalVotes}</p>
-                <p className="text-sm text-muted-foreground/90 sm:text-base">Feedbacks registrados pelos usuários</p>
+                <p className="text-4xl font-semibold text-foreground">{totalVotes}</p>
+                <p className="text-base text-muted-foreground/90 sm:text-lg">Feedbacks registrados pelos usuários</p>
               </div>
               <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.3em] text-primary/70">
                   <Flame className="h-4 w-4" />
                   Técnicas variadas
                 </p>
-                <p className="text-3xl font-semibold text-foreground">{uniqueTechniquesCount}</p>
-                <p className="text-sm text-muted-foreground/90 sm:text-base">Estilos de treinamento aplicados</p>
+                <p className="text-4xl font-semibold text-foreground">{uniqueTechniquesCount}</p>
+                <p className="text-base text-muted-foreground/90 sm:text-lg">Estilos de treinamento aplicados</p>
               </div>
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_25px_90px_-60px_rgba(147,51,234,0.5)] sm:p-8">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_25px_90px_-60px_rgba(147,51,234,0.5)] sm:p-10">
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/70">Filtros</p>
-                <h2 className="text-xl font-semibold text-foreground sm:text-2xl">Personalize sua visão</h2>
+                <p className="text-sm font-semibold uppercase tracking-[0.35em] text-primary/70">Filtros</p>
+                <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">Personalize sua visão</h2>
               </div>
+              <Button
+                variant="ghost"
+                onClick={handleResetFilters}
+                className="rounded-full border border-white/10 bg-gradient-to-r from-primary to-accent px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-primary-foreground shadow-[0_18px_50px_-30px_rgba(147,51,234,0.6)] hover:from-primary/90 hover:to-accent/90"
+              >
+                Limpar filtros
+              </Button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Select value={filterTask} onValueChange={setFilterTask}>
-                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                   <SelectValue placeholder="Filtrar por tarefa" />
                 </SelectTrigger>
                 <SelectContent>
@@ -653,7 +667,7 @@ const Leaderboard = () => {
               </Select>
 
               <Select value={filterModelFamily} onValueChange={setFilterModelFamily}>
-                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                   <SelectValue placeholder="Filtrar por família" />
                 </SelectTrigger>
                 <SelectContent>
@@ -667,7 +681,7 @@ const Leaderboard = () => {
               </Select>
 
               <Select value={filterTechnique} onValueChange={setFilterTechnique}>
-                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-foreground">
+                <SelectTrigger className="h-12 rounded-2xl border border-white/10 bg-white/5 text-lg text-foreground">
                   <SelectValue placeholder="Filtrar por técnica" />
                 </SelectTrigger>
                 <SelectContent>
@@ -710,7 +724,7 @@ const Leaderboard = () => {
                   <div
                     key={`${entry.modelId}-${entry.rank}`}
                     className={cn(
-                      "flex flex-col gap-4 rounded-3xl border p-6 transition sm:grid sm:grid-cols-[minmax(0,1.6fr)_minmax(200px,0.7fr)_minmax(150px,0.5fr)] sm:items-center sm:gap-6",
+                      "flex flex-col gap-6 rounded-3xl border p-6 transition sm:grid sm:grid-cols-[minmax(0,1.6fr)_minmax(200px,0.7fr)_minmax(150px,0.5fr)] sm:items-center sm:gap-8",
                       theme.card
                     )}
                   >
@@ -718,18 +732,20 @@ const Leaderboard = () => {
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-xl font-bold text-primary shadow-[0_18px_40px_-20px_rgba(147,51,234,0.6)]">
                         {entry.rank}º
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <div className="space-y-1">
-                          <p className="text-lg font-semibold text-foreground">{primaryLabel}</p>
-                          <p className="text-sm text-muted-foreground/80">{entry.modelId}</p>
+                          <p className="text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
+                            {primaryLabel}
+                          </p>
+                          <p className="text-base text-muted-foreground/80">{entry.modelId}</p>
                         </div>
                         {badges.length > 0 && (
                           <div className="flex flex-wrap items-center gap-2">
                             {badges.map(({ prefix, value }) => (
                               <Badge
                                 key={`${entry.modelId}-${prefix}`}
-                                variant="outline"
-                                className="rounded-full border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium uppercase tracking-widest text-muted-foreground"
+                                variant="secondary"
+                                className="rounded-full border border-white/10 bg-white/5 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground"
                               >
                                 <span className="text-muted-foreground/80">{prefix}:</span>{" "}
                                 <span className="ml-1 text-foreground">{value}</span>
@@ -740,20 +756,20 @@ const Leaderboard = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-start gap-2 text-sm text-muted-foreground sm:items-end sm:justify-center sm:text-right">
-                      <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                    <div className="flex flex-col items-start gap-2 text-base text-muted-foreground sm:items-end sm:justify-center sm:text-right">
+                      <span className="text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground/70">
                         Técnica
                       </span>
-                      <Badge className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+                      <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-sm font-semibold uppercase tracking-[0.35em] text-primary">
                         {techniqueLabel}
                       </Badge>
                     </div>
 
-                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-primary shadow-[0_18px_40px_-25px_rgba(147,51,234,0.7)] sm:justify-self-end">
+                    <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-primary shadow-[0_18px_40px_-25px_rgba(147,51,234,0.7)] sm:justify-self-end">
                       <Trophy className={cn("h-5 w-5", theme.crown)} />
                       <div className="flex flex-col">
                         <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Votos</span>
-                        <span className="text-lg font-semibold text-foreground">{entry.votes}</span>
+                        <span className="text-2xl font-semibold text-foreground">{entry.votes}</span>
                       </div>
                     </div>
                   </div>
@@ -762,7 +778,7 @@ const Leaderboard = () => {
             )}
             {totalEntries > 0 && (
               <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground/90">
+                <p className="text-base text-muted-foreground/90">
                   Mostrando {pageStart === 0 ? 0 : pageStart}–{pageEnd} de {totalEntries} {totalEntries === 1 ? "voto" : "votos"}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
@@ -776,7 +792,7 @@ const Leaderboard = () => {
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span className="text-sm font-medium text-muted-foreground">
+                    <span className="text-base font-medium text-muted-foreground">
                       Página {totalEntries === 0 ? 0 : currentPage} de {totalEntries === 0 ? 0 : totalPages}
                     </span>
                     <Button
@@ -793,7 +809,7 @@ const Leaderboard = () => {
                     <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
                       Ir para
                     </span>
-                    <div className="flex items-center gap-2 rounded-full border border-white/15 bg-background/70 px-3 py-1 shadow-[0_12px_40px_-25px_rgba(147,51,234,0.45)]">
+                    <div className="flex items-center gap-2 rounded-full border border-white/15 bg-background/70 px-3 py-1.5 shadow-[0_12px_40px_-25px_rgba(147,51,234,0.45)]">
                       <Input
                         value={pageInput}
                         onChange={event => handlePageInputChange(event.target.value)}
@@ -806,7 +822,7 @@ const Leaderboard = () => {
                         disabled={totalEntries === 0}
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        className="h-7 w-16 border-0 bg-transparent px-0 text-center text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-0"
+                        className="h-7 w-16 border-0 bg-transparent px-0 text-center text-base font-semibold text-foreground focus-visible:outline-none focus-visible:ring-0"
                         aria-label="Ir para página específica"
                       />
                       <span className="text-[11px] text-muted-foreground/70">/ {totalEntries === 0 ? 0 : totalPages}</span>
