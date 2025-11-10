@@ -56,6 +56,26 @@ interface EvalResultsFile {
   eval_results?: EvalResultEntry[];
 }
 
+interface ModelAverageBenchmarkDetail {
+  id?: string;
+  benchmarkName: string;
+  datasetName: string | null;
+  technique: string | null;
+  accuracy: number | null;
+  createdAt: string | null;
+  correct: number | null;
+  total: number | null;
+}
+
+interface ModelAverageSummary {
+  modelName: string;
+  average: number;
+  benchmarkCount: number;
+  best: { name: string; accuracy: number } | null;
+  worst: { name: string; accuracy: number } | null;
+  benchmarks: ModelAverageBenchmarkDetail[];
+}
+
 const KNOWN_TASKS = ["aqua_rat", "esnli", "gsm8k", "math_qa", "strategy_qa"];
 const KNOWN_MODEL_FAMILIES = [
   "Llama-3.2-3B-Instruct",
@@ -63,8 +83,8 @@ const KNOWN_MODEL_FAMILIES = [
   "Qwen3-4B-Instruct-2507",
   "gemma-3-4b-it",
 ];
-const ITEMS_PER_PAGE = 5;
-const MAX_HEATMAP_BENCHMARKS = 10;
+const LIST_ITEMS_PER_PAGE = 5;
+const AVERAGE_ITEMS_PER_PAGE = 4;
 const DASHBOARD_CONTAINER = "mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-10 xl:px-16";
 
 const inferModelNameFromPath = (modelPath?: string | null): string | null => {
@@ -208,8 +228,9 @@ const Dashboard = () => {
   const [rankingOrder, setRankingOrder] = useState<"desc" | "asc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
-  const [selectedAverageModel, setSelectedAverageModel] = useState<string | null>(null);
   const [benchmarkViewMode, setBenchmarkViewMode] = useState<"list" | "models">("list");
+  const [averageCurrentPage, setAverageCurrentPage] = useState(1);
+  const [averagePageInput, setAveragePageInput] = useState("1");
   const isListView = benchmarkViewMode === "list";
   const isModelView = benchmarkViewMode === "models";
 
@@ -385,7 +406,7 @@ const Dashboard = () => {
     return Array.from(
       new Set(filteredByTask.map(model => model.name).filter((model): model is string => Boolean(model)))
     );
-  }, [benchmarks, selectedModelFamily, selectedTask]);
+  }, [benchmarks, resolveModelFamily, resolveModelName, resolveTask, selectedModelFamily, selectedTask]);
 
   useEffect(() => {
     if (selectedModelFamily === "all" && selectedTask === "all") return;
@@ -481,13 +502,13 @@ const Dashboard = () => {
 
   const totalBenchmarks = orderedBenchmarks.length;
   const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(totalBenchmarks / ITEMS_PER_PAGE)),
+    () => Math.max(1, Math.ceil(totalBenchmarks / LIST_ITEMS_PER_PAGE)),
     [totalBenchmarks]
   );
 
   const paginatedBenchmarks = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return orderedBenchmarks.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * LIST_ITEMS_PER_PAGE;
+    return orderedBenchmarks.slice(startIndex, startIndex + LIST_ITEMS_PER_PAGE);
   }, [orderedBenchmarks, currentPage]);
 
   useEffect(() => {
@@ -496,8 +517,8 @@ const Dashboard = () => {
     }
   }, [currentPage, totalPages]);
 
-  const pageStart = totalBenchmarks === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
-  const pageEnd = totalBenchmarks === 0 ? 0 : Math.min(pageStart + ITEMS_PER_PAGE - 1, totalBenchmarks);
+  const pageStart = totalBenchmarks === 0 ? 0 : (currentPage - 1) * LIST_ITEMS_PER_PAGE + 1;
+  const pageEnd = totalBenchmarks === 0 ? 0 : Math.min(pageStart + LIST_ITEMS_PER_PAGE - 1, totalBenchmarks);
 
   const goToPage = (pageNumber: number) => {
     if (totalBenchmarks === 0) return;
@@ -646,8 +667,8 @@ const Dashboard = () => {
       ).toFixed(2)
     : "0";
 
-  const modelAverageStats = useMemo(() => {
-    const accumulator = new Map<
+  const modelAverageSummaries = useMemo<ModelAverageSummary[]>(() => {
+    const statsAccumulator = new Map<
       string,
       {
         modelName: string;
@@ -657,13 +678,14 @@ const Dashboard = () => {
         worst: { name: string; accuracy: number } | null;
       }
     >();
+    const benchmarksAccumulator = new Map<string, ModelAverageBenchmarkDetail[]>();
 
     benchmarksForAverages.forEach(benchmark => {
       const modelName = resolveModelName(benchmark);
       if (!modelName) return;
       const accuracy = typeof benchmark.accuracy_percent === "number" ? benchmark.accuracy_percent : 0;
       const benchmarkName = resolveBenchmark(benchmark) ?? "Benchmark desconhecido";
-      const entry = accumulator.get(modelName) ?? {
+      const statsEntry = statsAccumulator.get(modelName) ?? {
         modelName,
         total: 0,
         count: 0,
@@ -671,34 +693,105 @@ const Dashboard = () => {
         worst: null,
       };
 
-      entry.total += accuracy;
-      entry.count += 1;
+      statsEntry.total += accuracy;
+      statsEntry.count += 1;
 
-      if (!entry.best || accuracy > entry.best.accuracy) {
-        entry.best = { name: benchmarkName, accuracy };
+      if (!statsEntry.best || accuracy > statsEntry.best.accuracy) {
+        statsEntry.best = { name: benchmarkName, accuracy };
       }
-      if (!entry.worst || accuracy < entry.worst.accuracy) {
-        entry.worst = { name: benchmarkName, accuracy };
+      if (!statsEntry.worst || accuracy < statsEntry.worst.accuracy) {
+        statsEntry.worst = { name: benchmarkName, accuracy };
       }
 
-      accumulator.set(modelName, entry);
+      statsAccumulator.set(modelName, statsEntry);
+
+      const benchmarkEntry: ModelAverageBenchmarkDetail = {
+        id: benchmark.id,
+        benchmarkName,
+        datasetName: resolveTask(benchmark),
+        technique: resolveTechnique(benchmark),
+        accuracy: normalizeAccuracyValue(benchmark.accuracy_percent),
+        createdAt: benchmark.created_at ?? null,
+        correct: typeof benchmark.correct === "number" ? benchmark.correct : null,
+        total: typeof benchmark.total === "number" ? benchmark.total : null,
+      };
+      const benchmarkList = benchmarksAccumulator.get(modelName) ?? [];
+      benchmarkList.push(benchmarkEntry);
+      benchmarksAccumulator.set(modelName, benchmarkList);
     });
 
-    return Array.from(accumulator.values())
-      .map(entry => ({
-        modelName: entry.modelName,
-        average: entry.count ? entry.total / entry.count : 0,
-        benchmarkCount: entry.count,
-        best: entry.best,
-        worst: entry.worst,
-      }))
+    return Array.from(statsAccumulator.values())
+      .map(entry => {
+        const benchmarks = (benchmarksAccumulator.get(entry.modelName) ?? []).sort(
+          (a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0)
+        );
+        return {
+          modelName: entry.modelName,
+          average: entry.count ? entry.total / entry.count : 0,
+          benchmarkCount: entry.count,
+          best: entry.best,
+          worst: entry.worst,
+          benchmarks,
+        };
+      })
       .sort((a, b) => b.average - a.average);
-  }, [benchmarksForAverages, resolveModelName, resolveBenchmark]);
+  }, [benchmarksForAverages, resolveBenchmark, resolveModelName, resolveTask, resolveTechnique]);
 
-  const selectedAverageModelStats = useMemo(() => {
-    if (modelAverageStats.length === 0) return null;
-    return [...modelAverageStats].sort((a, b) => b.average - a.average)[0];
-  }, [modelAverageStats]);
+  const totalAverageModels = modelAverageSummaries.length;
+  const averageTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(totalAverageModels / AVERAGE_ITEMS_PER_PAGE)),
+    [totalAverageModels]
+  );
+
+  const averagePaginatedModels = useMemo(() => {
+    const startIndex = (averageCurrentPage - 1) * AVERAGE_ITEMS_PER_PAGE;
+    return modelAverageSummaries.slice(startIndex, startIndex + AVERAGE_ITEMS_PER_PAGE);
+  }, [modelAverageSummaries, averageCurrentPage]);
+
+  useEffect(() => {
+    if (averageCurrentPage > averageTotalPages) {
+      setAverageCurrentPage(averageTotalPages);
+    }
+  }, [averageCurrentPage, averageTotalPages]);
+
+  const averagePageStart =
+    totalAverageModels === 0 ? 0 : (averageCurrentPage - 1) * AVERAGE_ITEMS_PER_PAGE + 1;
+  const averagePageEnd =
+    totalAverageModels === 0 ? 0 : Math.min(averagePageStart + AVERAGE_ITEMS_PER_PAGE - 1, totalAverageModels);
+
+  const goToAveragePage = (pageNumber: number) => {
+    if (totalAverageModels === 0) return;
+    const sanitized = Math.min(Math.max(1, Math.trunc(pageNumber)), averageTotalPages);
+    setAverageCurrentPage(sanitized);
+  };
+
+  useEffect(() => {
+    if (totalAverageModels === 0) {
+      setAveragePageInput("0");
+    } else {
+      setAveragePageInput(String(averageCurrentPage));
+    }
+  }, [averageCurrentPage, totalAverageModels]);
+
+  const handleAveragePageInputChange = (value: string) => {
+    const sanitized = value.replace(/[^0-9]/g, "");
+    setAveragePageInput(sanitized);
+  };
+
+  const commitAveragePageInput = () => {
+    if (totalAverageModels === 0) return;
+    if (!averagePageInput) {
+      setAveragePageInput(String(averageCurrentPage));
+      return;
+    }
+    const parsed = Number(averagePageInput);
+    if (Number.isFinite(parsed)) {
+      goToAveragePage(parsed);
+    } else {
+      setAveragePageInput(String(averageCurrentPage));
+    }
+  };
+
   const handleResetFilters = () => {
     setSelectedTask("all");
     setSelectedModelFamily("all");
@@ -706,37 +799,11 @@ const Dashboard = () => {
     setSelectedTechnique("all");
     setSelectedBenchmark("all");
     setRankingOrder("desc");
+    setCurrentPage(1);
+    setPageInput("1");
+    setAverageCurrentPage(1);
+    setAveragePageInput(totalAverageModels === 0 ? "0" : "1");
   };
-
-  const selectedAverageModelBenchmarks = useMemo(() => {
-    if (!selectedAverageModelStats) return [];
-
-    return benchmarksForAverages
-      .filter(benchmark => resolveModelName(benchmark) === selectedAverageModelStats.modelName)
-      .map(benchmark => ({
-        id: benchmark.id,
-        benchmarkName: resolveBenchmark(benchmark) ?? "Benchmark desconhecido",
-        datasetName: resolveTask(benchmark),
-        technique: resolveTechnique(benchmark),
-        accuracy: normalizeAccuracyValue(benchmark.accuracy_percent),
-        createdAt: benchmark.created_at ?? null,
-        correct: typeof benchmark.correct === "number" ? benchmark.correct : null,
-        total: typeof benchmark.total === "number" ? benchmark.total : null,
-      }))
-      .sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0));
-  }, [
-    benchmarksForAverages,
-    resolveBenchmark,
-    resolveModelName,
-    resolveTask,
-    resolveTechnique,
-    selectedAverageModelStats,
-  ]);
-
-  const displayedAverageBenchmarks = useMemo(
-    () => selectedAverageModelBenchmarks.slice(0, MAX_HEATMAP_BENCHMARKS),
-    [selectedAverageModelBenchmarks]
-  );
 
   const getPrimaryAnswerType = (benchmark: BenchmarkDetails) => {
     if (!benchmark.by_answer_type) return null;
@@ -1157,136 +1224,206 @@ const Dashboard = () => {
               <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-primary" />
             </div>
           ) : isModelView ? (
-            modelAverageStats.length === 0 || !selectedAverageModelStats ? (
+            modelAverageSummaries.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">
                 <p>Nenhum dado agregado disponível para os filtros atuais.</p>
                 <p className="mt-2 text-sm">Ajuste os filtros ou importe novos resultados.</p>
               </div>
             ) : (
-              <div className="space-y-6">
-                <Card className="border border-white/10 bg-gradient-to-br from-primary/15 via-primary/5 to-background/90 shadow-[0_24px_90px_-65px_rgba(147,51,234,0.55)] backdrop-blur">
-                  <CardHeader className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                        Resumo do modelo
-                      </CardTitle>
-                      <Badge className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground backdrop-blur">
-                        {selectedAverageModelStats.modelName}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground/80">
-                      Média calculada com {selectedAverageModelStats.benchmarkCount}{" "}
-                      {selectedAverageModelStats.benchmarkCount === 1 ? "benchmark" : "benchmarks"} filtrados.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    <div className="rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/80">
-                          Média de acurácia
+              <div className="space-y-10">
+                {averagePaginatedModels.map(model => (
+                  <div key={model.modelName} className="space-y-6">
+                    <Card className="border border-white/10 bg-gradient-to-br from-primary/15 via-primary/5 to-background/90 shadow-[0_24px_90px_-65px_rgba(147,51,234,0.55)] backdrop-blur">
+                      <CardHeader className="space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                            Resumo do modelo
+                          </CardTitle>
+                          <Badge className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-foreground backdrop-blur">
+                            {model.modelName}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground/80">
+                          Média calculada com {model.benchmarkCount}{" "}
+                          {model.benchmarkCount === 1 ? "benchmark" : "benchmarks"} filtrados.
                         </p>
-                        <Gauge className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
-                        {formatPercentage(selectedAverageModelStats.average)}
-                      </p>
-                      <p className="mt-2 text-xs text-muted-foreground/75">
-                        Cobertura de {selectedAverageModelBenchmarks.length}{" "}
-                        {selectedAverageModelBenchmarks.length === 1 ? "benchmark" : "benchmarks"} avaliados.
-                      </p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                          <ArrowUpRight className="h-3.5 w-3.5" />
-                          Melhor benchmark
-                        </p>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
-                          {formatLabel(selectedAverageModelStats.best?.name, "—")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPercentage(selectedAverageModelStats.best?.accuracy)} de acurácia
-                        </p>
-                      </div>
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                          <ArrowDownRight className="h-3.5 w-3.5" />
-                          Ponto de atenção
-                        </p>
-                        <p className="mt-3 text-sm font-semibold text-foreground">
-                          {formatLabel(selectedAverageModelStats.worst?.name, "—")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPercentage(selectedAverageModelStats.worst?.accuracy)} de acurácia
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      </CardHeader>
+                      <CardContent className="space-y-5">
+                        <div className="rounded-3xl border border-white/15 bg-white/10 p-6 backdrop-blur">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground/80">
+                              Média de acurácia
+                            </p>
+                            <Gauge className="h-4 w-4 text-primary" />
+                          </div>
+                          <p className="mt-4 text-4xl font-semibold text-foreground sm:text-5xl">
+                            {formatPercentage(model.average)}
+                          </p>
+                          <p className="mt-2 text-xs text-muted-foreground/75">
+                            Cobertura de {model.benchmarkCount}{" "}
+                            {model.benchmarkCount === 1 ? "benchmark" : "benchmarks"} avaliados.
+                          </p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                              Melhor benchmark
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {formatLabel(model.best?.name, "—")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatPercentage(model.best?.accuracy)} de acurácia
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <p className="flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                              <ArrowDownRight className="h-3.5 w-3.5" />
+                              Ponto de atenção
+                            </p>
+                            <p className="mt-3 text-sm font-semibold text-foreground">
+                              {formatLabel(model.worst?.name, "—")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatPercentage(model.worst?.accuracy)} de acurácia
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
 
-                <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
-                      Desempenho por benchmark
-                    </CardTitle>
-                    <Activity className="h-4 w-4 text-primary" />
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {displayedAverageBenchmarks.length === 0 ? (
-                      <p className="text-sm text-muted-foreground/80">
-                        Nenhum registro detalhado disponível para este modelo.
-                      </p>
-                    ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {displayedAverageBenchmarks.map(item => {
-                          const formattedName = formatLabel(item.benchmarkName, "—");
-                          const accuracyLabel = formatPercentage(item.accuracy);
-                          const attemptsLabel =
-                            typeof item.correct === "number" && typeof item.total === "number"
-                              ? `${item.correct} / ${item.total}`
-                              : null;
-                          const datasetLabel =
-                            item.datasetName && item.datasetName !== "Tarefa desconhecida"
-                              ? formatLabel(item.datasetName, "")
-                              : null;
+                    <Card className="border border-white/10 bg-white/5 shadow-none backdrop-blur">
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/70">
+                          Desempenho por benchmark
+                        </CardTitle>
+                        <Activity className="h-4 w-4 text-primary" />
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {model.benchmarks.length === 0 ? (
+                          <p className="text-sm text-muted-foreground/80">
+                            Nenhum registro detalhado disponível para este modelo.
+                          </p>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {model.benchmarks.map(item => {
+                              const formattedName = formatLabel(item.benchmarkName, "—");
+                              const accuracyLabel = formatPercentage(item.accuracy);
+                              const attemptsLabel =
+                                typeof item.correct === "number" && typeof item.total === "number"
+                                  ? `${item.correct} / ${item.total}`
+                                  : null;
+                              const datasetLabel =
+                                item.datasetName && item.datasetName !== "Tarefa desconhecida"
+                                  ? formatLabel(item.datasetName, "")
+                                  : null;
 
-                          return (
-                            <div
-                              key={`${item.id ?? item.benchmarkName}`}
-                              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="text-sm font-semibold text-foreground">{formattedName}</p>
-                                  {datasetLabel && (
-                                    <Badge className="mt-1 w-fit border border-primary/30 bg-primary/10 text-[11px] font-semibold uppercase tracking-[0.35em] text-primary">
-                                      {datasetLabel}
-                                    </Badge>
-                                  )}
+                              return (
+                                <div
+                                  key={`${item.id ?? `${model.modelName}-${item.benchmarkName}`}`}
+                                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <p className="text-sm font-semibold text-foreground">{formattedName}</p>
+                                      {datasetLabel && (
+                                        <Badge className="mt-1 w-fit border border-primary/30 bg-primary/10 text-[11px] font-semibold uppercase tracking-[0.35em] text-primary">
+                                          {datasetLabel}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {item.createdAt && (
+                                      <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                                        {formatDate(item.createdAt)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                                      Acurácia {accuracyLabel}
+                                    </span>
+                                    {attemptsLabel && (
+                                      <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-foreground">
+                                        {attemptsLabel}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                                {item.createdAt && (
-                                  <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
-                                    {formatDate(item.createdAt)}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-                                  Acurácia {accuracyLabel}
-                                </span>
-                                {attemptsLabel && (
-                                  <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-foreground">
-                                    {attemptsLabel}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+                <div className="flex flex-col gap-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-muted-foreground/90">
+                    Mostrando {averagePageStart === 0 ? 0 : averagePageStart}–{averagePageEnd} de {totalAverageModels}{" "}
+                    {totalAverageModels === 1 ? "modelo" : "modelos"}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setAverageCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={averageCurrentPage === 1 || totalAverageModels === 0}
+                        className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Página {totalAverageModels === 0 ? 0 : averageCurrentPage} de{" "}
+                        {totalAverageModels === 0 ? 0 : averageTotalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setAverageCurrentPage(prev => Math.min(averageTotalPages, prev + 1))}
+                        disabled={averageCurrentPage === averageTotalPages || totalAverageModels === 0}
+                        className="h-9 w-9 rounded-full border-white/15 bg-white/5 text-muted-foreground hover:text-primary"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground/80">
+                        Ir para
+                      </span>
+                      <div className="flex items-center gap-2 rounded-full border border-white/15 bg-background/70 px-3 py-1 shadow-[0_12px_40px_-25px_rgba(147,51,234,0.45)]">
+                        <Input
+                          value={averagePageInput}
+                          onChange={event => handleAveragePageInputChange(event.target.value)}
+                          onKeyDown={event => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              commitAveragePageInput();
+                            }
+                          }}
+                          disabled={totalAverageModels === 0}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          className="h-7 w-16 border-0 bg-transparent px-0 text-center text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-0"
+                          aria-label="Ir para página específica de modelos"
+                        />
+                        <span className="text-[11px] text-muted-foreground/70">
+                          / {totalAverageModels === 0 ? 0 : averageTotalPages}
+                        </span>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={commitAveragePageInput}
+                        disabled={totalAverageModels === 0}
+                        className="rounded-full border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-muted-foreground hover:text-primary"
+                      >
+                        Ir
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )
           ) : filteredBenchmarks.length === 0 ? (
