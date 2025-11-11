@@ -356,6 +356,26 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
       }
     });
 
+    // Ensure we have at least 6 suggestions for the UI.
+    const desiredCount = 6;
+    if (suggestions.length < desiredCount) {
+      // Build a pool of all prompts and remove already selected ones.
+      const allPrompts = Object.values(PROMPT_SUGGESTIONS_BY_TASK).flat().filter(Boolean) as string[];
+      const remainingPool = allPrompts.filter(p => !suggestions.includes(p));
+
+      // Add unique prompts from the remaining pool until we reach the desired count.
+      while (suggestions.length < desiredCount && remainingPool.length > 0) {
+        const idx = Math.floor(Math.random() * remainingPool.length);
+        suggestions.push(remainingPool.splice(idx, 1)[0]);
+      }
+
+      // If the pool was too small (unlikely), allow duplicates until we reach the desired count.
+      while (suggestions.length < desiredCount && allPrompts.length > 0) {
+        const pick = allPrompts[Math.floor(Math.random() * allPrompts.length)];
+        if (pick) suggestions.push(pick);
+      }
+    }
+
     return suggestions;
   }, [currentChatId, conversation.length]);
   useEffect(() => {

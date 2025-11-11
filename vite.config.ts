@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Allow the Azure host used by the environment so Vite won't block requests from it.
+    // Add additional hosts here if needed or set to 'all' to allow any host.
+    allowedHosts: ["bgg.brazilsouth.cloudapp.azure.com"],
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
