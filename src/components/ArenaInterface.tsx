@@ -284,6 +284,11 @@ const SUGGESTION_CARD_ACCENTS = [
 ] as const;
 
 const TCC_VOTE_LINK = "https://example.com/tcc-vote";
+const VOTE_TO_QR_DELAY_MULTIPLIER = 8;
+const getTimestampMs = () =>
+  typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
 
 
 export interface ArenaInterfaceHandle {
@@ -709,6 +714,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     }
   };
   const handleVote = async (outputId: string) => {
+    const voteStartTimestamp = getTimestampMs();
     if (hasVoted) return;
     if (!latestTurn || !currentChatId) return;
     const selectedOutput = outputsById[outputId];
@@ -766,6 +772,11 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         ? `Você votou na resposta gerada pelo modelo ${selectedModelName}.`
         : "Voto registrado."
     });
+    const elapsedSinceVote = getTimestampMs() - voteStartTimestamp;
+    const additionalDelayMs = Math.max(0, elapsedSinceVote * (VOTE_TO_QR_DELAY_MULTIPLIER - 1));
+    if (additionalDelayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, additionalDelayMs));
+    }
     setShowTccQr(true);
   };
 
