@@ -797,7 +797,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     if (additionalDelayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, additionalDelayMs));
     }
-    setShowTccQr(true);
+    //setShowTccQr(true);
   };
 
   const handleCloseTccQr = () => {
