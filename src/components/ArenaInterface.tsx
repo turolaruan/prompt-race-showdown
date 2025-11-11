@@ -282,8 +282,6 @@ const SUGGESTION_CARD_ACCENTS = [
   "bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent",
 ] as const;
 
-const EXTRA_PROMPT_SUGGESTION =
-  "Qual estratégia de IA você recomenda para diminuir churn em uma plataforma de assinatura?";
 
 export interface ArenaInterfaceHandle {
   startNewChat: () => void;
@@ -1007,10 +1005,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   );
 
   const renderPromptSection = () => {
-    const baseSuggestions = promptSuggestions.slice(0, 5);
-    const suggestionsSet = new Set<string>(baseSuggestions);
-    suggestionsSet.add(EXTRA_PROMPT_SUGGESTION);
-    const suggestions = Array.from(suggestionsSet).slice(0, 6);
+    const suggestions = promptSuggestions.slice(0, 6);
 
     return (
       <section className="mx-auto flex w-full max-w-[1400px] flex-col items-center space-y-6 px-2 text-center sm:px-4">
