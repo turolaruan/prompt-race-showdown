@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useChatHistory } from "@/context/ChatHistoryContext";
 import type { ChatHistoryEntry, ChatTurn, ChatTurnOutput } from "@/context/ChatHistoryContext";
 import { cn } from "@/lib/utils";
+import { QRCodeSVG } from "qrcode.react";
 
 const PROMPT_SUGGESTIONS_BY_TASK: Record<string, string[]> = {
   strategy_qa: [
@@ -282,6 +283,8 @@ const SUGGESTION_CARD_ACCENTS = [
   "bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent",
 ] as const;
 
+const TCC_VOTE_LINK = "https://example.com/tcc-vote";
+
 
 export interface ArenaInterfaceHandle {
   startNewChat: () => void;
@@ -315,6 +318,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   const [conversation, setConversation] = useState<ChatTurn[]>([]);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [useMockData] = useState(false);
+  const [showTccQr, setShowTccQr] = useState(false);
   const aliasEntriesRef = useRef<ModelAliasEntry[]>([]);
   if (aliasEntriesRef.current.length === 0) {
     aliasEntriesRef.current = shuffleAliases(MODEL_ALIAS_ENTRIES);
@@ -469,6 +473,17 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
   useEffect(() => {
     restoreVoteState(latestTurn ?? null);
   }, [latestTurn, restoreVoteState]);
+
+  useEffect(() => {
+    if (!showTccQr || typeof document === "undefined") {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showTccQr]);
   const handleSuggestionSelect = (suggestion: string) => {
     if (!suggestion) return;
     setPrompt(suggestion);
@@ -751,6 +766,16 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         ? `Você votou na resposta gerada pelo modelo ${selectedModelName}.`
         : "Voto registrado."
     });
+    setShowTccQr(true);
+  };
+
+  const handleCloseTccQr = () => {
+    setShowTccQr(false);
+  };
+
+  const handleOpenTccVoteLink = () => {
+    if (typeof window === "undefined") return;
+    window.open(TCC_VOTE_LINK, "_blank", "noopener,noreferrer");
   };
 
   const startNewChat = useCallback(() => {
@@ -760,6 +785,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     setCurrentChat(null);
     setHasVoted(false);
     setVotedFor(null);
+    setShowTccQr(false);
     setIsRunning(false);
   }, [setCurrentChat]);
 
@@ -778,6 +804,7 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
     setConversation(turns);
     setPrompt("");
     setPendingPrompt(null);
+    setShowTccQr(false);
     setIsRunning(false);
     const latestSavedTurn = turns.length > 0 ? turns[turns.length - 1] : null;
     restoreVoteState(latestSavedTurn ?? null);
@@ -1143,6 +1170,60 @@ const ArenaInterface = forwardRef<ArenaInterfaceHandle>((_, ref) => {
         {renderMainContent()}
       </div>
       {!hasPromptInteraction && renderPromptComposer()}
+      {showTccQr && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4 py-8 backdrop-blur-xl">
+          <div className="relative flex w-full max-w-3xl flex-col items-center gap-6 rounded-[36px] border border-white/10 bg-gradient-to-br from-slate-950/95 via-slate-900/95 to-slate-900/90 p-8 text-center shadow-[0_45px_140px_-60px_rgba(147,51,234,0.7)] sm:p-12">
+            <button
+              type="button"
+              onClick={handleCloseTccQr}
+              className="absolute right-5 top-5 rounded-full border border-white/10 bg-white/5 p-2 text-white transition hover:bg-white/15"
+              aria-label="Fechar QR Code"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <Badge className="rounded-full border border-primary/40 bg-primary/20 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-primary">
+              Obrigado pelo voto!
+            </Badge>
+            <h3 className="text-3xl font-semibold text-foreground sm:text-4xl">
+              Agora vote também no nosso TCC
+            </h3>
+            <p className="max-w-2xl text-lg text-muted-foreground/90">
+              Apoie o projeto respondendo nossa pesquisa de validação. Basta apontar a câmera do celular para o QR code abaixo ou abrir o link direto.
+            </p>
+            <div className="rounded-[28px] border border-primary/30 bg-black/40 p-6 shadow-[0_35px_120px_-60px_rgba(59,130,246,0.45)]">
+              <QRCodeSVG
+                value={TCC_VOTE_LINK}
+                size={320}
+                bgColor="transparent"
+                fgColor="#ffffff"
+                includeMargin
+                level="H"
+              />
+            </div>
+            <p className="text-base text-muted-foreground/90">
+              Link direto:{" "}
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-foreground">
+                {TCC_VOTE_LINK}
+              </span>
+            </p>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button
+                onClick={handleOpenTccVoteLink}
+                className="w-full rounded-2xl bg-gradient-to-r from-primary to-primary/70 text-lg font-semibold text-primary-foreground shadow-[0_20px_60px_-30px_rgba(147,51,234,0.8)] sm:w-auto"
+              >
+                Abrir link agora
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCloseTccQr}
+                className="w-full rounded-2xl border-white/20 bg-transparent text-lg text-foreground hover:bg-white/10 sm:w-auto"
+              >
+                Continuar na arena
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 });
