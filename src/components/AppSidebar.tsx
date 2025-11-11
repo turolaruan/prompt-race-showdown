@@ -77,12 +77,12 @@ const AppSidebar = ({ collapsed, onToggle, onStartNewChat, onSelectChat }: AppSi
           <div className={cn("flex items-center justify-between gap-3 text-sidebar-foreground", collapsed && "flex-col gap-2") }>
             <div className={cn("flex items-center gap-3", collapsed && "justify-center") }>
               <span className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-sidebar-border/20">
-                <img src={gbcsrtLogo} alt="GB-CS-RT" className="h-8 w-8" />
+                <img src={gbcsrtLogo} alt="ChooseLLM" className="h-8 w-8" />
               </span>
               {!collapsed && (
                 <div>
                   <p className="text-base uppercase tracking-[0.2em] text-sidebar-foreground/60">AI Arena</p>
-                  <p className="text-2xl font-bold text-sidebar-foreground">GB-CS-RT</p>
+                  <p className="text-2xl font-bold text-sidebar-foreground">ChooseLLM</p>
                 </div>
               )}
             </div>

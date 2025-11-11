@@ -13,29 +13,29 @@ import { cn } from "@/lib/utils";
 
 const PROMPT_SUGGESTIONS_BY_TASK: Record<string, string[]> = {
   strategy_qa: [
-    "Aconselhe o presidente sobre como equilibrar segurança nacional e liberdades civis diante de uma nova ameaça, diagnosticando os principais riscos, apresentando uma matriz com três frentes prioritárias (medida, impacto esperado e riscos) e fechando com um plano de comunicação pública em dois passos.",
-    "Mostre como priorizar a carteira de um time de vendas B2B: explique os critérios de segmentação, apresente-os em uma tabela para quatro perfis hipotéticos (receita potencial, ciclo, esforço) e finalize com recomendações operacionais para os próximos 30 dias.",
-    "Distribua um orçamento anual de R$ 1 milhão para uma ONG climática listando três iniciativas com localização, público e custo, calculando a porcentagem destinada a cada uma, definindo métricas de sucesso e detalhando como medir o impacto em seis meses.",
+    "Defina três frentes de ação para um governo que precisa conter uma epidemia local sem travar a economia.",
+    "Explique como decidir entre expandir uma fábrica própria ou terceirizar a produção para um pico sazonal.",
+    "Crie prioridades de investimento em mobilidade urbana quando o orçamento cobre apenas duas iniciativas.",
   ],
   math_qa: [
-    "Resolva o sistema 3x + 2y = 12 e x - y = 1 descrevendo o método escolhido, numerando os passos de substituição ou escalonamento e destacando os valores finais de x e y.",
-    "Calcule o valor futuro de um investimento de R$ 8.000 a 1,2% ao mês durante 18 meses em juros compostos, explicando a fórmula, montando a expressão com números, chegando ao resultado e interpretando o significado financeiro.",
-    "Encontre o perímetro de um triângulo isósceles em que a base mede 14 cm e cada lado igual é 5 cm maior, extraindo os dados do enunciado, montando a equação do perímetro e apresentando a resposta com unidades.",
+    "Um trem percorre 150 km em 2h15; qual é a velocidade média em km/h?",
+    "Se um empréstimo de R$ 8.000 rende 1,5% ao mês por 6 meses, qual é o saldo final?",
+    "Quantos litros restam de um reservatório de 420 L após consumir 18%?",
   ],
   aqua_rat: [
-    "Resolva 3x + 5 = 20 descrevendo o isolamento da incógnita, detalhando cada transformação algébrica com a justificativa e verificando o resultado ao substituir o valor de x.",
-    "Calcule o desconto total de um produto que recebe reduções sucessivas de 10% e 5% sobre o preço original, mostrando a fórmula utilizada, o percentual final e por que a soma simples não chega ao mesmo valor.",
-    "Determine x em 2(x - 4) = 3x + 1 distribuindo os termos, agrupando corretamente, isolando a incógnita, fornecendo o valor final e checando rapidamente com a substituição.",
+    "Quem escreveu Dom Casmurro e qual dilema o romance apresenta?",
+    "Por que o desmatamento na Amazônia altera o clima global?",
+    "Explique em poucos passos por que a Revolução Industrial começou na Inglaterra.",
   ],
   gsm8k: [
-    "Calcule a velocidade média de um estudante que percorre 120 km em 2 horas, apresentando a fórmula, substituindo os valores, exibindo a unidade final e mantendo a explicação acessível ao ensino médio.",
-    "Descubra quantos pontos são necessários para atingir 75% de aproveitamento em uma prova com 20 questões valendo 5 pontos cada, calculando o total possível, aplicando o percentual e interpretando o resultado.",
-    "Ache a área de um retângulo cujos lados descritos em texto são 8 m e 3 m a mais que isso, traduzindo o enunciado para números, aplicando a fórmula da área, indicando as unidades e comentando o significado prático.",
+    "Uma classe vendeu 48 ingressos a R$20 e 32 a R$35; qual foi a arrecadação total?",
+    "Um ciclista percorre 90 km em 3 horas com uma pausa de 15 minutos; qual é a velocidade média desconsiderando a pausa?",
+    "Quantos pacotes de 12 unidades são necessários para distribuir 290 kits em um evento?",
   ],
   esnli: [
-    "Resuma em duas frases o parágrafo: \"Desde 2019, o programa Energia Viva levou sistemas solares a 48 comunidades ribeirinhas no Amazonas, ajudou 6.200 famílias a cortar 70% do diesel, refrigerar vacinas e vender polpas; o novo desafio é manter a assistência técnica apesar das enchentes.\" Destaque conclusão e desafio futuro.",
-    "Sentenças: A) \"Todos os sensores instalados no porto captam umidade acima de 80%.\" B) \"Alguns sensores no porto registram ar seco.\" Classifique B como implicação, contradição ou neutra em relação a A, cite o motivo e proponha contraexemplo se neutra.",
-    "Resuma em até três frases este texto: \"O Ministério da Saúde lançou hoje, em Recife, o programa Sentinela Azul para equipar 120 UBS com testes rápidos de dengue, treinar 400 agentes e reduzir surtos em 35% até março/2025 usando dados do Inmet.\" Preserve quem anunciou, onde, números-chave e meta percentual.",
+    "Resuma em duas frases: 'O projeto Horizonte Verde instalou 200 painéis solares e treinou 40 técnicos na Bahia.'",
+    "Classifique se 'Alguns sensores falharam' contradiz, implica ou é neutro em relação a 'Todos os sensores funcionaram durante o teste' e justifique.",
+    "Resuma em até três frases: 'A prefeitura lançou um app que alerta enchentes duas horas antes e já chegou a 50 bairros.'",
   ],
 };
 
