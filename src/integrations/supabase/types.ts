@@ -79,55 +79,31 @@ export type Database = {
       }
       benchmarks: {
         Row: {
-          accuracy_percent: number
-          avg_seconds_per_example: number | null
-          by_answer_type: Json | null
           created_at: string | null
-          correct: number
-          generated_max_new_tokens: number | null
+          dataset: string | null
           id: string
-          mode: string
-          model_name: string | null
-          model_path: string
-          out_dir: string | null
-          runtime_seconds: number | null
-          stop_on_answer: boolean | null
-          total: number
-          val_json: string
+          metric: string
+          model_name: string
+          score: number
+          task_type: string
         }
         Insert: {
-          accuracy_percent: number
-          avg_seconds_per_example?: number | null
-          by_answer_type?: Json | null
           created_at?: string | null
-          correct: number
-          generated_max_new_tokens?: number | null
+          dataset?: string | null
           id?: string
-          mode: string
-          model_name?: string | null
-          model_path: string
-          out_dir?: string | null
-          runtime_seconds?: number | null
-          stop_on_answer?: boolean | null
-          total: number
-          val_json: string
+          metric: string
+          model_name: string
+          score: number
+          task_type: string
         }
         Update: {
-          accuracy_percent?: number
-          avg_seconds_per_example?: number | null
-          by_answer_type?: Json | null
           created_at?: string | null
-          correct?: number
-          generated_max_new_tokens?: number | null
+          dataset?: string | null
           id?: string
-          mode?: string
-          model_name?: string | null
-          model_path?: string
-          out_dir?: string | null
-          runtime_seconds?: number | null
-          stop_on_answer?: boolean | null
-          total?: number
-          val_json?: string
+          metric?: string
+          model_name?: string
+          score?: number
+          task_type?: string
         }
         Relationships: []
       }
